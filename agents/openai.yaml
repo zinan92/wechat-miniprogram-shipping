@@ -1,0 +1,4 @@
+interface:
+  display_name: "WeChat Mini Program Shipping"
+  short_description: "Ship Mini Programs with frontend and CloudBase gates"
+  default_prompt: "Use $wechat-miniprogram-shipping to plan and ship this WeChat Mini Program with explicit frontend, CloudBase, device, and release gates."
