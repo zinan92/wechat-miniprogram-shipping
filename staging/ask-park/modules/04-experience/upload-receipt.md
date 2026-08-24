@@ -46,6 +46,11 @@ tool:
 clean_tree: true | false
 ignored_config:
   restored: true | false
+operator_state:
+  preserved_before_check: true | false
+  restored_after_check: true | false
+  unsaved_content_loss: false | true
+  evidence_ref: redacted:...
 review:
   result: pass | fail | blocked | not-applicable
 release:
@@ -56,6 +61,9 @@ not_applicable_reason: null | explicit reason
 impact_analysis: null | explicit evidence
 evidence_limitations: [what this receipt cannot prove]
 receipt:
+  # Full S01 module receipt: receipt_type, schema/contract version, source,
+  # issue, applicability, artifact/package/target, invalidation_rules,
+  # issued_at, evidence_refs, and predecessor_receipt_ids are required.
   receipt_id: experience-rN
   module: experience
   status: valid | invalid | not-applicable
@@ -66,7 +74,8 @@ receipt:
 
 - `verified-experience` requires matching source/package identity between
   Compile, Upload, and target read-back, a clean tree, and restored ignored
-  configuration.
+  configuration. Operator state is preserved before the DevTools check and
+  restored afterward; unsaved-content loss blocks upload.
 - Compile and Simulator are local observations. Upload proves a named package
   exists at a target only after target read-back; neither proves review,
   Release, payment, or physical-device behavior.
@@ -78,5 +87,7 @@ receipt:
   gates that remain in scope.
 - A changed source/package/environment/tool identity makes the receipt stale
   and returns to Ask Park for causal invalidation. No upload retry is inferred.
+- The nested `receipt` is a complete S01 generic module receipt and must pass
+  the shared validator; this module adds the Experience observations around it.
 - All identity/target values are aliases or `redacted:` references. A real QR,
   AppID, environment ID, or account identity never enters this record.

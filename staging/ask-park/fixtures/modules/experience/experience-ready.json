@@ -16,6 +16,7 @@
   "tool": {"name": "wechat-devtools", "version": "stable-alias", "base_library": "base-library-v1"},
   "clean_tree": true,
   "ignored_config": {"restored": true},
+  "operator_state": {"preserved_before_check": true, "restored_after_check": true, "unsaved_content_loss": false, "evidence_ref": "redacted:operator-state"},
   "review": {"result": "not-applicable"},
   "release": {"result": "not-applicable"},
   "backend_only": false,

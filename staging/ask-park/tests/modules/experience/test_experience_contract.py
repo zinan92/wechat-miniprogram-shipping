@@ -1,3 +1,4 @@
+import importlib.util
 import json
 import unittest
 from pathlib import Path
@@ -10,6 +11,14 @@ RECEIPT_DOC = ROOT / "modules" / "04-experience" / "upload-receipt.md"
 
 
 class ExperienceContractTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        validator_path = ROOT / "scripts" / "validate-state.py"
+        spec = importlib.util.spec_from_file_location("experience_contract_validator", validator_path)
+        cls.validator = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(cls.validator)
+
     def fixture(self, name):
         return json.loads((FIXTURES / name).read_text(encoding="utf-8"))
 
@@ -38,6 +47,9 @@ class ExperienceContractTests(unittest.TestCase):
         self.assertIn(document["release"]["result"], {"pass", "fail", "blocked", "not-applicable"})
         self.assertTrue(document["evidence_limitations"])
         self.assertTrue(document["receipt"]["receipt_id"])
+        self.assertTrue(document["operator_state"]["evidence_ref"].startswith("redacted:"))
+        receipt_result = self.validator.validate_receipt(document["receipt"])
+        self.assertTrue(receipt_result.valid, receipt_result.errors)
 
     def test_experience_ready_binds_compile_upload_target_and_clean_source(self):
         document = self.fixture("experience-ready.json")
@@ -45,6 +57,9 @@ class ExperienceContractTests(unittest.TestCase):
         self.assertEqual(document["status"], "verified-experience")
         self.assertTrue(document["clean_tree"])
         self.assertTrue(document["ignored_config"]["restored"])
+        self.assertTrue(document["operator_state"]["preserved_before_check"])
+        self.assertTrue(document["operator_state"]["restored_after_check"])
+        self.assertFalse(document["operator_state"]["unsaved_content_loss"])
         self.assertEqual(document["compile"]["result"], "pass")
         self.assertEqual(document["simulator"]["result"], "pass")
         self.assertEqual(document["upload"]["result"], "pass")

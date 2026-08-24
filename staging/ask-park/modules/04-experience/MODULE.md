@@ -23,6 +23,8 @@ Produce an Experience record conforming to
 
 - mock/configured release gates and exact DevTools project/compile/upload path;
 - clean-tree and ignored-local-config restoration result;
+- operator-state preservation before DevTools/upload checks and restoration
+  result after the check;
 - Compile, Simulator, Upload, target read-back, review, and Release as separate
   evidence layers;
 - version/note/time/source SHA/tool/base-library/environment contract bindings;
@@ -44,6 +46,8 @@ separate claims.
   human gate;
 - uncommitted source or changed Build/CloudBase identity → invalidate from the
   earliest changed prerequisite and return to Build/CloudBase;
+- unsaved operator content cannot be preserved/restored → stop the check,
+  record a bounded human decision, and do not upload;
 - backend-only change with unchanged client contract → explicit
   `not-applicable` only with impact analysis;
 - review or formal Release is not proven by Upload and remains a later gate.
@@ -52,9 +56,9 @@ separate claims.
 
 Record source/package SHA or digest, project identity aliases, version/note/time,
 DevTools/tool/base-library versions, environment contract alias, compile and
-upload evidence, target read-back, clean-tree/config restoration, predecessor
-receipt IDs, limitations, and unproven review/release/device claims. Use only
-redacted identity references.
+upload evidence, target read-back, clean-tree/config/operator-state restoration,
+predecessor receipt IDs, limitations, and unproven review/release/device
+claims. Use only redacted identity references.
 
 ## Forbidden boundary
 
@@ -72,12 +76,14 @@ redacted identity references.
 
 1. Verify Build/CloudBase predecessor receipts, source SHA, clean tree, and
    redacted project/environment identity.
-2. Run the credential-free mock gate, then the configured gate only when the
+2. Preserve unsaved operator state before opening/compiling/uploading and
+   record the restoration evidence; stop if preservation is unavailable.
+3. Run the credential-free mock gate, then the configured gate only when the
    human/platform boundary is explicitly prepared.
-3. Open the exact project in DevTools, compile the named source, and record tool,
+4. Open the exact project in DevTools, compile the named source, and record tool,
    base-library, route, and package identity.
-4. Upload only through the approved human gate; record version/note/time and
+5. Upload only through the approved human gate; record version/note/time and
    read back the target package.
-5. Restore ignored local configuration and prove the release source is clean.
-6. Keep Compile, Simulator, Upload, target, review, and Release evidence in
+6. Restore ignored local configuration and prove the release source is clean.
+7. Keep Compile, Simulator, Upload, target, review, and Release evidence in
    separate fields; hand the Experience receipt to Ask Park for Device next.
