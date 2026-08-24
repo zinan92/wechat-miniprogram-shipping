@@ -163,6 +163,26 @@ class ReceiptLifecycleTests(LifecycleTestCase):
             predecessors={"plan-r1": self.fixture("valid-plan-receipt.json")},
         )
 
+        mismatched = copy.deepcopy(self.fixture("valid-cloudbase-receipt.json"))
+        mismatched["receipt_id"] = "wrong-alias"
+        self.assertCode(
+            "PREDECESSOR_RECEIPT_INVALID",
+            self.lifecycle.reuse_receipt,
+            receipt,
+            changed_fields=[],
+            predecessors={"plan-r1": mismatched},
+        )
+
+        later = self.fixture("valid-experience-receipt.json")
+        later["receipt_id"] = "plan-r1"
+        self.assertCode(
+            "PREDECESSOR_ORDER_INVALID",
+            self.lifecycle.reuse_receipt,
+            receipt,
+            changed_fields=[],
+            predecessors={"plan-r1": later},
+        )
+
     def test_invalidation_is_transitive_and_selects_earliest_module(self):
         receipts = {
             receipt["receipt_id"]: receipt
@@ -180,6 +200,7 @@ class ReceiptLifecycleTests(LifecycleTestCase):
             ("build-r1", "cloudbase-r1", "experience-r1"),
         )
         self.assertEqual(result.receipts["build-r1"]["status"], "stale")
+        self.assertEqual(result.receipts["build-r1"]["stale_reason"], "causal-identity-changed")
         self.assertEqual(result.receipts["experience-r1"]["status"], "stale")
 
     def test_rewind_locks_downstream_without_routing_authority(self):
@@ -296,6 +317,14 @@ class ControlAndMigrationTests(LifecycleTestCase):
         )
         self.assertEqual(migrated["contract_version"], "ask-park.receipt/v2")
         self.assertEqual(migrated["status"], "valid")
+
+        self.assertCode(
+            "INCOMPATIBLE_CONTRACT",
+            self.lifecycle.migrate_receipt,
+            receipt,
+            target_contract_version="ask-park.receipt/v2",
+            migration=lambda item: item,
+        )
 
         self.assertCode(
             "MIGRATION_CAUSAL_IDENTITY_CHANGED",

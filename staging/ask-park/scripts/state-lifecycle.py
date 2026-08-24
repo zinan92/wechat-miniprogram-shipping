@@ -286,6 +286,7 @@ def transition_activity(state: Mapping[str, Any], module: str, target: str) -> d
         other_current = [name for name in MODULES if name != module and result["modules"][name]["activity_state"] == "current"]
         if other_current:
             _error("CURRENT_MODULE_REQUIRED", "only one sequential module may be current", "current_module")
+        result["current_module"] = module
     if target == "completed":
         if result["diagnose"]["state"] == "active":
             _error("DIAGNOSE_ACTIVE", "an active Diagnose overlay must recover before module completion", "diagnose.state")
@@ -490,6 +491,10 @@ def reuse_receipt(
                 raise
             if not _receipt_status_satisfies(validated_predecessor):
                 _error("PREDECESSOR_RECEIPT_INVALID", "a reused receipt has an invalid predecessor", "receipt.predecessor_receipt_ids")
+            if validated_predecessor["receipt_id"] != receipt_id:
+                _error("PREDECESSOR_RECEIPT_INVALID", "predecessor payload does not match its alias", "receipt.predecessor_receipt_ids")
+            if validated_predecessor["module"] not in MODULES or MODULE_INDEX[validated_predecessor["module"]] >= MODULE_INDEX[existing["module"]]:
+                _error("PREDECESSOR_ORDER_INVALID", "reused receipt predecessor must be an earlier sequential module", "receipt.predecessor_receipt_ids")
     if expected_identity is not None and dict(expected_identity) != _causal_identity(existing):
         _error("RECEIPT_CAUSAL_IDENTITY_CHANGED", "receipt causal identity differs from the expected identity", "receipt")
     return existing
@@ -539,6 +544,7 @@ def invalidate_receipts(
     for receipt_id in selected:
         if updated[receipt_id].get("status") == "valid":
             updated[receipt_id]["status"] = "stale"
+            updated[receipt_id]["stale_reason"] = reason_code
     ordered_ids = tuple(
         sorted(
             selected,
@@ -762,13 +768,11 @@ def migrate_receipt(
     if migration is None:
         _error("CONTRACT_MIGRATION_REQUIRED", "contract-version changes require an explicit migration", "receipt.contract_version")
     if callable(migration):
-        transform = migration
-        metadata: Mapping[str, Any] = {"compatible": True, "preserves_causal_identity": True, "verified": True}
-    else:
-        metadata = migration
-        if metadata.get("compatible") is not True or metadata.get("preserves_causal_identity") is not True or metadata.get("verified") is not True:
-            _error("INCOMPATIBLE_CONTRACT", "migration must explicitly prove compatibility and verification", "migration")
-        transform = metadata.get("transform")
+        _error("INCOMPATIBLE_CONTRACT", "migration metadata must explicitly prove compatibility and verification", "migration")
+    metadata = migration
+    if metadata.get("compatible") is not True or metadata.get("preserves_causal_identity") is not True or metadata.get("verified") is not True:
+        _error("INCOMPATIBLE_CONTRACT", "migration must explicitly prove compatibility and verification", "migration")
+    transform = metadata.get("transform")
     migrated = _clone(source)
     if transform is not None:
         if not callable(transform):
