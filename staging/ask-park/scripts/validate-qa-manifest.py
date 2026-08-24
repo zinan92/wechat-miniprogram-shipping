@@ -211,7 +211,7 @@ def validate_candidate(document: Any) -> ValidationResult:
                     errors.add("QA_UNKNOWN_FIELD", "manifest.candidate.<key>", "field is not in the candidate schema")
             if not _is_digest(candidate.get("source_sha")):
                 errors.add("QA_SOURCE_SHA", "manifest.candidate.source_sha", "source SHA must be a full digest")
-            for key in ("lockfile_digest", "build_config_digest", "build_artifact_digest", "native_project_config_digest", "runtime_config_digest"):
+            for key in ("lockfile_digest", "build_config_digest", "build_artifact_digest", "native_project_config_digest", "runtime_config_digest", "package_digest"):
                 if candidate.get(key) is not None and not _is_digest(candidate[key]):
                     errors.add("QA_DIGEST", f"manifest.candidate.{key}", "candidate digest is invalid")
         if not isinstance(document.get("predecessor_receipt_ids"), list) or any(not _is_alias(item) for item in document.get("predecessor_receipt_ids", [])):

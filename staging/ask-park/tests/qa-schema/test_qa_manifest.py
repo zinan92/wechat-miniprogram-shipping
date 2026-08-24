@@ -45,6 +45,12 @@ class QAManifestContractTests(unittest.TestCase):
         invalid = self.validator.validate_document(candidate_extra, "candidate")
         self.assertFalse(invalid.valid)
         self.assertIn("QA_UNKNOWN_FIELD", {error.code for error in invalid.errors})
+        candidate_bad_package = copy.deepcopy(candidate)
+        candidate_bad_package["candidate"]["package_digest"] = "not-a-sha"
+        candidate_bad_package["digest"] = self.validator.canonical_digest(candidate_bad_package)
+        invalid = self.validator.validate_document(candidate_bad_package, "candidate")
+        self.assertFalse(invalid.valid)
+        self.assertIn("QA_DIGEST", {error.code for error in invalid.errors})
 
     def test_target_manifest_references_candidate_and_post_target_result_binds_both(self):
         candidate = self.fixture("candidate-valid.json")
