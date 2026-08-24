@@ -27,12 +27,13 @@
 - S14B/#28 is complete in PR #70 (`6e95de1`): 23 architecture + 22 QA raw forward scenarios, canonical JCS-bound manifest, per-scenario fixture closures/allowed-input enforcement, observed state/result oracles, Browser/DevTools/evaluator/QA-schema/lifecycle/QA-routing pass→defect→restore controls, third-failure/no-fourth proof, artifact-tree privacy, and nested zero-side-effect receipts; 8/8 forward tests plus the full staged/module regression set passed. Staged validation, `py_compile`, diff-check, gitleaks, and both adversarial reviews passed.
 - S15/#29 is complete in PR #72 (`b395598`): isolated synthetic-reader trial bound Browser and DevTools to one candidate/project identity, caught stale live drift, duplicate title, double safe area, stale package, and missing final compile, proved fresh repair evidence, post-automation human blocking, three-failure escalation/no-fourth, actual touched-target/side-effect receipts, and sanitized artifacts; 6/6 trial tests plus the full staged/module regression set passed. Staged validation, `py_compile`, diff-check, gitleaks, and both adversarial reviews passed.
 - S16A/#30 is complete in PR #74 (`19a7bc6`): staging-only scanned-root/symlink/realpath inventory, redacted file refs, JCS-bound canonical package manifest, verified repository/history pre-migration receipt, outside-root staging scope, private/symlink escape rejection, transactional cleanup, managed four-checkpoint rollback rehearsals, and no root/active-skill cutover; 12/12 migration tests plus the full staged/module regression set passed. Staged validation, `py_compile`, diff-check, gitleaks, and both reviews passed.
-- S16B/#31 is the next story to implement. Installed canary, rollback rehearsal, and final public README publication remain unimplemented.
+- S16B/#31 is complete in PR #76 (`6fc11b4`): canonical Ask Park promoted to root with exactly one SKILL/metadata pair, full closure at root, staging duplicate removed, capability-first README with managed temporary clean-clone installer, closure manifest equality, full router/module/QA canary, seven-path missing-file failures, and no active local path mutation; root final layout and full regression suite passed. Final package, py_compile, diff-check, gitleaks, and both cutover reviews passed.
+- S16C/#32 is the next story to implement. Actual installed-path canary, recoverable local cutover, rollback receipt, and final public publication remain unimplemented.
 
 ## 下一步
 
-1. Implement [#31 / S16B](https://github.com/zinan92/wechat-miniprogram-shipping/issues/31): atomic repository cutover and clean-clone install proof.
-2. Merge S16B after its gates pass, update this Registry, then make the next dependency-ready story ready from the new `main`.
+1. Implement [#32 / S16C](https://github.com/zinan92/wechat-miniprogram-shipping/issues/32): installed-path canary, recoverable cutover, and rollback receipt.
+2. Merge S16C after its gates pass, update this Registry, then make the next dependency-ready story ready from the new `main`.
 3. Preserve hard WIP=1 and the published dependency order through #33/S16D.
 
 ## Evidence
@@ -62,4 +63,5 @@
 - [PR #70](https://github.com/zinan92/wechat-miniprogram-shipping/pull/70)
 - [PR #72](https://github.com/zinan92/wechat-miniprogram-shipping/pull/72)
 - [PR #74](https://github.com/zinan92/wechat-miniprogram-shipping/pull/74)
+- [PR #76](https://github.com/zinan92/wechat-miniprogram-shipping/pull/76)
 - [Implementation Dev Queue](https://github.com/zinan92/wechat-miniprogram-shipping/issues?q=is%3Aissue%20state%3Aopen%20label%3Aenhancement)
