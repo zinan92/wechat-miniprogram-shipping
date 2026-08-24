@@ -35,6 +35,16 @@ class DevToolsQATests(unittest.TestCase):
         self.assertEqual(result["matrix_rows"], 9)
         self.assertTrue(result["evidence"])
         self.assertTrue(all(row["sanitized"] for row in result["evidence"]))
+        self.assertTrue(all(row["matrix_bound"] for row in result["evidence"]))
+        self.assertEqual(
+            set(result["evidence"][0]),
+            {
+                "route", "device", "state", "source_sha", "screenshot_hash",
+                "final_compile_provenance", "ref", "sanitized", "matrix_bound",
+                "viewport", "role", "data_state", "tool", "runtime", "observed_at",
+                "source_identity",
+            },
+        )
 
         replay = self.qa.run_hermetic_qa(
             self.fixture("events-valid.json"), self.fixture("matrix-valid.json")

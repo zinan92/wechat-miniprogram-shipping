@@ -361,8 +361,10 @@ def evaluate_events(events: list[Mapping[str, Any]], matrix: list[Mapping[str, A
         findings.append("upload note and platform read-back candidate differ")
     findings = list(dict.fromkeys(findings))
 
-    evidence = [
-        {
+    evidence = []
+    for event in screenshots:
+        row = row_by_key.get((event["route"], event["device"], event["state"]))
+        evidence_row = {
             "route": event["route"],
             "device": event["device"],
             "state": event["state"],
@@ -371,9 +373,21 @@ def evaluate_events(events: list[Mapping[str, Any]], matrix: list[Mapping[str, A
             "final_compile_provenance": final_provenance,
             "ref": "redacted:devtools-screenshot",
             "sanitized": True,
+            "matrix_bound": row is not None,
         }
-        for event in screenshots
-    ]
+        if row is not None:
+            evidence_row.update(
+                {
+                    "viewport": row["viewport"],
+                    "role": row["role"],
+                    "data_state": row["data_state"],
+                    "tool": row["tool"],
+                    "runtime": row["runtime"],
+                    "observed_at": row["observed_at"],
+                    "source_identity": row.get("source_identity", row["source_sha"]),
+                }
+            )
+        evidence.append(evidence_row)
     return {
         "result": "QA_PASS" if not findings else "QA_FAIL",
         "findings": findings,
