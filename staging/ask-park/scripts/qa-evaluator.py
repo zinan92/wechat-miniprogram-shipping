@@ -151,9 +151,18 @@ def complete_attempt(state: Mapping[str, Any], packet: Mapping[str, Any]) -> dic
     attempt = current.get("attempt")
     if current.get("execution_state") != "running" or not isinstance(attempt, int) or attempt < 1 or attempt > 3:
         _fail("QA_ATTEMPT_STATE", "only a running attempt 1..3 can complete", "state")
-    running_packet = current.get("packet")
-    for key in ("worker_identity", "evaluator_identity", "candidate_sha_before", "candidate_sha_after", "worktree_sha_before", "worktree_sha_after", "issue_contract_id", "attempt"):
-        if not isinstance(running_packet, Mapping) or checked.get(key) != running_packet.get(key):
+    expected = {
+        "worker_identity": current.get("worker_identity"),
+        "evaluator_identity": current.get("evaluator_identity"),
+        "candidate_sha_before": current.get("candidate_sha"),
+        "candidate_sha_after": current.get("candidate_sha"),
+        "worktree_sha_before": current.get("worktree_sha"),
+        "worktree_sha_after": current.get("worktree_sha"),
+        "issue_contract_id": current.get("issue_contract_id"),
+        "attempt": attempt,
+    }
+    for key, expected_value in expected.items():
+        if checked.get(key) != expected_value:
             _fail("QA_PACKET_STATE_MISMATCH", "packet does not match the running attempt", f"packet.{key}")
     current["execution_state"] = "complete"
     current["result"] = checked["verdict"]
@@ -162,7 +171,7 @@ def complete_attempt(state: Mapping[str, Any], packet: Mapping[str, Any]) -> dic
     return current
 
 
-def repair_attempt(state: Mapping[str, Any], *, candidate_sha: str, worktree_sha: str, same_contract: bool, prior_result: str | None = None) -> dict[str, Any]:
+def repair_attempt(state: Mapping[str, Any], *, candidate_sha: str, worktree_sha: str, same_contract: bool, prior_result: str | None = None, issue_contract_id: str | None = None, evaluator_identity: str | None = None) -> dict[str, Any]:
     if not _digest(candidate_sha):
         _fail("QA_CANDIDATE_IDENTITY", "candidate SHA must be a full digest", "candidate_sha")
     if not _digest(worktree_sha):
@@ -177,6 +186,13 @@ def repair_attempt(state: Mapping[str, Any], *, candidate_sha: str, worktree_sha
         _fail("QA_REPAIR_RESULT", "repair requires a completed QA result", "state.result")
     if same_contract and candidate_sha == current.get("candidate_sha"):
         _fail("QA_CANDIDATE_NOT_NEW", "same-contract repair requires a new candidate digest", "candidate_sha")
+    if not same_contract:
+        if not _alias(issue_contract_id) or not _alias(evaluator_identity):
+            _fail("QA_REPAIR_IDENTITY_REQUIRED", "contract changes require new issue and evaluator identities", "repair")
+        if evaluator_identity == current.get("worker_identity"):
+            _fail("QA_EVALUATOR_NOT_INDEPENDENT", "worker and evaluator identities must differ", "repair.evaluator_identity")
+        current["issue_contract_id"] = issue_contract_id
+        current["evaluator_identity"] = evaluator_identity
     if not same_contract or actual_result in {"QA_PASS", "QA_BLOCKED"}:
         attempt = 1
     else:
@@ -192,14 +208,7 @@ def repair_attempt(state: Mapping[str, Any], *, candidate_sha: str, worktree_sha
     }
     current["candidate_sha"] = candidate_sha
     current["worktree_sha"] = worktree_sha
-    if isinstance(current.get("packet"), dict):
-        current["packet"].update({
-            "candidate_sha_before": candidate_sha,
-            "candidate_sha_after": candidate_sha,
-            "worktree_sha_before": worktree_sha,
-            "worktree_sha_after": worktree_sha,
-            "attempt": attempt,
-        })
+    current["packet"] = None
     return current
 
 

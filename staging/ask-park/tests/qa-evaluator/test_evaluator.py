@@ -88,11 +88,14 @@ class EvaluatorTests(unittest.TestCase):
         state["candidate_sha"] = "sha256:" + "a" * 64
         reset = self.evaluator.repair_attempt(state, candidate_sha="sha256:" + "b" * 64, worktree_sha="sha256:" + "c" * 64, same_contract=True, prior_result="QA_PASS")
         self.assertEqual(reset["attempt"], 1)
+        self.assertIsNone(reset["packet"])
         self.assertCode("QA_ATTEMPT_INVALID", self.evaluator.start_attempt, worker_identity="worker-a", evaluator_identity="evaluator-b", candidate_sha="sha256:" + "a" * 64, worktree_sha="sha256:" + "b" * 64, issue_contract_id="issue-24", attempt=0)
         self.assertCode("QA_ATTEMPT_INVALID", self.evaluator.start_attempt, worker_identity="worker-a", evaluator_identity="evaluator-b", candidate_sha="sha256:" + "a" * 64, worktree_sha="sha256:" + "b" * 64, issue_contract_id="issue-24", attempt=4)
         state["result"] = "QA_FAIL"
-        reset = self.evaluator.repair_attempt(state, candidate_sha="sha256:" + "c" * 64, worktree_sha="sha256:" + "d" * 64, same_contract=False, prior_result="QA_FAIL")
+        reset = self.evaluator.repair_attempt(state, candidate_sha="sha256:" + "c" * 64, worktree_sha="sha256:" + "d" * 64, same_contract=False, prior_result="QA_FAIL", issue_contract_id="issue-25", evaluator_identity="evaluator-c")
         self.assertEqual(reset["attempt"], 1)
+        self.assertEqual(reset["issue_contract_id"], "issue-25")
+        self.assertEqual(reset["evaluator_identity"], "evaluator-c")
 
     def test_no_evaluator_is_prerequisite_missing_not_blocked(self):
         state = self.evaluator.prerequisite_missing(origin_module="build")
