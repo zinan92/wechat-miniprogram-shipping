@@ -61,7 +61,7 @@ class EvaluatorTests(unittest.TestCase):
         self.assertCode("QA_PASS_AUTOMATION", self.evaluator.validate_packet, passed)
 
     def test_three_attempt_loop_escalates_without_fourth_repair(self):
-        state = self.evaluator.start_attempt(worker_identity="worker-build-a", evaluator_identity="evaluator-fresh-b", candidate_sha="sha256:" + "a" * 64, issue_contract_id="issue-24")
+        state = self.evaluator.start_attempt(worker_identity="worker-build-a", evaluator_identity="evaluator-fresh-b", candidate_sha="sha256:" + "a" * 64, worktree_sha="sha256:" + "a" * 64, issue_contract_id="issue-24")
         for attempt in (1, 2, 3):
             packet = self.fixture("fail-packet.json")
             packet["candidate_sha_before"] = "sha256:" + chr(96 + attempt) * 64
@@ -72,20 +72,21 @@ class EvaluatorTests(unittest.TestCase):
             state["attempt"] = attempt
             state = self.evaluator.complete_attempt(state, packet)
             if attempt < 3:
-                state = self.evaluator.repair_attempt(state, candidate_sha="sha256:" + chr(96 + attempt + 1) * 64, same_contract=True, prior_result="QA_FAIL")
+                state = self.evaluator.repair_attempt(state, candidate_sha="sha256:" + chr(96 + attempt + 1) * 64, worktree_sha="sha256:" + chr(96 + attempt + 1) * 64, same_contract=True, prior_result="QA_FAIL")
                 state["execution_state"] = "running"
         self.assertEqual(state["result"], "QA_FAIL")
         self.assertEqual(state["control_outcome"], "needs-park-decision")
-        self.assertCode("QA_THIRD_FAILURE_ESCALATION", self.evaluator.repair_attempt, state, candidate_sha="sha256:" + "e" * 64, same_contract=True, prior_result="QA_FAIL")
+        self.assertCode("QA_THIRD_FAILURE_ESCALATION", self.evaluator.repair_attempt, state, candidate_sha="sha256:" + "e" * 64, worktree_sha="sha256:" + "f" * 64, same_contract=True, prior_result="QA_FAIL")
 
     def test_pass_or_blocked_or_identity_change_resets_attempt(self):
         state = {"execution_state": "complete", "result": "QA_PASS", "control_outcome": "none", "attempt": 2, "max_attempts": 3}
-        reset = self.evaluator.repair_attempt(state, candidate_sha="sha256:" + "b" * 64, same_contract=True, prior_result="QA_PASS")
+        state["candidate_sha"] = "sha256:" + "a" * 64
+        reset = self.evaluator.repair_attempt(state, candidate_sha="sha256:" + "b" * 64, worktree_sha="sha256:" + "c" * 64, same_contract=True, prior_result="QA_PASS")
         self.assertEqual(reset["attempt"], 1)
-        self.assertCode("QA_ATTEMPT_INVALID", self.evaluator.start_attempt, worker_identity="worker-a", evaluator_identity="evaluator-b", candidate_sha="sha256:" + "a" * 64, issue_contract_id="issue-24", attempt=0)
-        self.assertCode("QA_ATTEMPT_INVALID", self.evaluator.start_attempt, worker_identity="worker-a", evaluator_identity="evaluator-b", candidate_sha="sha256:" + "a" * 64, issue_contract_id="issue-24", attempt=4)
+        self.assertCode("QA_ATTEMPT_INVALID", self.evaluator.start_attempt, worker_identity="worker-a", evaluator_identity="evaluator-b", candidate_sha="sha256:" + "a" * 64, worktree_sha="sha256:" + "b" * 64, issue_contract_id="issue-24", attempt=0)
+        self.assertCode("QA_ATTEMPT_INVALID", self.evaluator.start_attempt, worker_identity="worker-a", evaluator_identity="evaluator-b", candidate_sha="sha256:" + "a" * 64, worktree_sha="sha256:" + "b" * 64, issue_contract_id="issue-24", attempt=4)
         state["result"] = "QA_FAIL"
-        reset = self.evaluator.repair_attempt(state, candidate_sha="sha256:" + "c" * 64, same_contract=False, prior_result="QA_FAIL")
+        reset = self.evaluator.repair_attempt(state, candidate_sha="sha256:" + "c" * 64, worktree_sha="sha256:" + "d" * 64, same_contract=False, prior_result="QA_FAIL")
         self.assertEqual(reset["attempt"], 1)
 
     def test_no_evaluator_is_prerequisite_missing_not_blocked(self):
@@ -99,6 +100,12 @@ class EvaluatorTests(unittest.TestCase):
             packet = self.fixture(name)
             with self.assertRaises(self.evaluator.EvaluatorError):
                 self.evaluator.validate_packet(packet)
+        packet = self.fixture("fail-packet.json")
+        packet["findings"] = ["next_module=release"]
+        self.assertCode("QA_PACKET_PRIVATE_FIELD", self.evaluator.validate_packet, packet)
+        packet = self.fixture("fail-packet.json")
+        packet["exclusions"] = ["cloud://private-target"]
+        self.assertCode("QA_PACKET_PRIVATE_FIELD", self.evaluator.validate_packet, packet)
 
     def test_docs_define_independence_and_bounded_loop(self):
         for name, phrases in {

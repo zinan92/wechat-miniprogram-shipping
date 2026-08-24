@@ -14,6 +14,7 @@ LAYERS = {"plan", "build", "cloudbase", "experience", "device", "release"}
 VERDICTS = {"QA_PASS", "QA_FAIL", "QA_BLOCKED"}
 PACKET_KEYS = {"worker_identity", "evaluator_identity", "fresh_context", "read_only", "candidate_sha_before", "candidate_sha_after", "worktree_sha_before", "worktree_sha_after", "bounded_inputs", "exclusions", "verdict", "findings", "advisory_earliest_layer", "automation_passed", "human_gate_required", "human_gate_ref", "issue_contract_id", "attempt", "limitations"}
 PRIVATE_PARTS = ("secret", "token", "password", "openid", "credential", "private_key", "api_key", "cookie", "next_module", "current_module")
+PRIVATE_PREFIXES = ("http://", "https://", "file://", "cloud://", "/Users/", "/private/", "~/")
 
 
 class EvaluatorError(ValueError):
@@ -44,7 +45,7 @@ def _walk_safe(value: Any) -> bool:
                 return False
     elif isinstance(value, list):
         return all(_walk_safe(child) for child in value)
-    elif isinstance(value, str) and value.startswith(("http://", "https://", "file://", "/Users/", "/private/", "~/")):
+    elif isinstance(value, str) and (value.startswith(PRIVATE_PREFIXES) or "next_module" in value.lower() or "current_module" in value.lower() or "route_to" in value.lower()):
         return False
     return True
 
@@ -72,6 +73,10 @@ def validate_packet(packet: Mapping[str, Any]) -> dict[str, Any]:
         _fail("QA_CANDIDATE_IDENTITY", "candidate before/after values must be full digests", "packet.candidate_sha")
     if packet["candidate_sha_before"] != packet["candidate_sha_after"] or packet["worktree_sha_before"] != packet["worktree_sha_after"]:
         _fail("QA_CANDIDATE_EDITED", "evaluator packet observes a candidate edit", "packet.candidate_sha_after")
+    if not _alias(packet["issue_contract_id"]):
+        _fail("QA_ISSUE_INVALID", "issue contract must be an alias", "packet.issue_contract_id")
+    if not isinstance(packet["attempt"], int) or packet["attempt"] < 1 or packet["attempt"] > 3:
+        _fail("QA_ATTEMPT_INVALID", "attempt must be 1..3", "packet.attempt")
     if not isinstance(packet["bounded_inputs"], list) or not packet["bounded_inputs"] or not all(_alias(item) for item in packet["bounded_inputs"]):
         _fail("QA_BOUNDED_INPUTS", "bounded inputs must be non-empty aliases", "packet.bounded_inputs")
     if not isinstance(packet["exclusions"], list) or not packet["exclusions"]:
@@ -88,6 +93,8 @@ def validate_packet(packet: Mapping[str, Any]) -> dict[str, Any]:
         _fail("QA_FAIL_FINDINGS", "QA_FAIL requires observable findings", "packet.findings")
     if not isinstance(packet["automation_passed"], bool):
         _fail("QA_AUTOMATION_FLAG", "automation_passed must be boolean", "packet.automation_passed")
+    if not isinstance(packet["human_gate_required"], bool):
+        _fail("QA_GATE_FLAG", "human_gate_required must be boolean", "packet.human_gate_required")
     if packet["verdict"] == "QA_PASS" and packet["automation_passed"] is not True:
         _fail("QA_PASS_AUTOMATION", "QA_PASS requires automation passed", "packet.automation_passed")
     if packet["verdict"] == "QA_BLOCKED" and packet["automation_passed"] is not True:
@@ -101,9 +108,11 @@ def validate_packet(packet: Mapping[str, Any]) -> dict[str, Any]:
     return copy.deepcopy(dict(packet))
 
 
-def start_attempt(*, worker_identity: str, evaluator_identity: str, candidate_sha: str, issue_contract_id: str, attempt: int = 1) -> dict[str, Any]:
+def start_attempt(*, worker_identity: str, evaluator_identity: str, candidate_sha: str, worktree_sha: str, issue_contract_id: str, attempt: int = 1) -> dict[str, Any]:
     if not _digest(candidate_sha):
         _fail("QA_CANDIDATE_IDENTITY", "candidate SHA must be a full digest", "candidate_sha")
+    if not _digest(worktree_sha):
+        _fail("QA_WORKTREE_IDENTITY", "worktree SHA must be a full digest", "worktree_sha")
     if not _alias(issue_contract_id):
         _fail("QA_ISSUE_INVALID", "issue contract must be an alias", "issue_contract_id")
     if not isinstance(attempt, int) or attempt < 1 or attempt > 3:
@@ -116,7 +125,7 @@ def start_attempt(*, worker_identity: str, evaluator_identity: str, candidate_sh
         "candidate_sha_before": candidate_sha,
         "candidate_sha_after": candidate_sha,
         "worktree_sha_before": candidate_sha,
-        "worktree_sha_after": candidate_sha,
+        "worktree_sha_after": worktree_sha,
         "bounded_inputs": [issue_contract_id],
         "exclusions": ["live-provider", "credentials", "private-data"],
         "verdict": "QA_PASS",
@@ -128,7 +137,10 @@ def start_attempt(*, worker_identity: str, evaluator_identity: str, candidate_sh
         "issue_contract_id": issue_contract_id,
         "attempt": attempt,
     }
-    return {"execution_state": "running", "result": "none", "control_outcome": "none", "attempt": attempt, "max_attempts": 3, "packet": packet}
+    packet["worktree_sha_before"] = worktree_sha
+    packet["worktree_sha_after"] = worktree_sha
+    checked = validate_packet(packet)
+    return {"execution_state": "running", "result": "none", "control_outcome": "none", "attempt": attempt, "max_attempts": 3, "worker_identity": worker_identity, "evaluator_identity": evaluator_identity, "candidate_sha": candidate_sha, "worktree_sha": worktree_sha, "issue_contract_id": issue_contract_id, "packet": checked}
 
 
 def complete_attempt(state: Mapping[str, Any], packet: Mapping[str, Any]) -> dict[str, Any]:
@@ -148,13 +160,18 @@ def complete_attempt(state: Mapping[str, Any], packet: Mapping[str, Any]) -> dic
     return current
 
 
-def repair_attempt(state: Mapping[str, Any], *, candidate_sha: str, same_contract: bool, prior_result: str = "none") -> dict[str, Any]:
+def repair_attempt(state: Mapping[str, Any], *, candidate_sha: str, worktree_sha: str, same_contract: bool, prior_result: str | None = None) -> dict[str, Any]:
     if not _digest(candidate_sha):
         _fail("QA_CANDIDATE_IDENTITY", "candidate SHA must be a full digest", "candidate_sha")
+    if not _digest(worktree_sha):
+        _fail("QA_WORKTREE_IDENTITY", "worktree SHA must be a full digest", "worktree_sha")
     current = copy.deepcopy(dict(state))
+    actual_result = current.get("result", "none")
+    if prior_result is not None and prior_result != actual_result:
+        _fail("QA_RESULT_STATE_MISMATCH", "caller result does not match evaluator state", "prior_result")
     if same_contract and candidate_sha == current.get("candidate_sha"):
         _fail("QA_CANDIDATE_NOT_NEW", "same-contract repair requires a new candidate digest", "candidate_sha")
-    if not same_contract or prior_result in {"QA_PASS", "QA_BLOCKED"}:
+    if not same_contract or actual_result in {"QA_PASS", "QA_BLOCKED"}:
         attempt = 1
     else:
         attempt = int(current.get("attempt", 0)) + 1
@@ -162,12 +179,13 @@ def repair_attempt(state: Mapping[str, Any], *, candidate_sha: str, same_contrac
         _fail("QA_THIRD_FAILURE_ESCALATION", "a fourth blind repair is not allowed", "attempt")
     current.update({"execution_state": "ready", "result": "none", "control_outcome": "none", "attempt": attempt})
     current["candidate_sha"] = candidate_sha
+    current["worktree_sha"] = worktree_sha
     if isinstance(current.get("packet"), dict):
         current["packet"].update({
             "candidate_sha_before": candidate_sha,
             "candidate_sha_after": candidate_sha,
             "worktree_sha_before": candidate_sha,
-            "worktree_sha_after": candidate_sha,
+            "worktree_sha_after": worktree_sha,
             "attempt": attempt,
         })
     return current
