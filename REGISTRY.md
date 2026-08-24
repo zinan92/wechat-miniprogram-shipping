@@ -23,12 +23,13 @@
 - S11/#24 is complete in PR #62 (`54d658c`): independent fresh-context/read-only evaluator packet, worker/evaluator and candidate/worktree provenance, PASS/FAIL/BLOCKED policy, prerequisite-missing, bounded same-contract repair, non-contract identity reset, stale-packet clearing, and attempt-three escalation; 10/10 evaluator tests plus 11/11 QA, 6/6 Release, 6/6 Device, 6/6 Experience, 6/6 CloudBase, 5/5 Build, 5/5 Diagnose, 6/6 Plan, 9/9 router, 30/30 lifecycle, 22/22 state, and 9/9 package tests passed. Staged validation, `py_compile`, diff-check, gitleaks, and both independent spec/standards reviews passed.
 - S12/#25 is complete in PR #64 (`8297169`): Browser QA-1/QA-2 contract, dual localhost raw adapter, sanitized Browser-first captures, candidate/compile/render matrix provenance, 8-state coverage, drift findings, prerequisite-missing, and pass→defect→restore controls; 8/8 Browser tests plus 10/10 evaluator, 11/11 QA, 6/6 Release, 6/6 Device, 6/6 Experience, 6/6 CloudBase, 5/5 Build, 6/6 Plan, 5/5 Diagnose, 9/9 router, 30/30 lifecycle, 22/22 state, and 9/9 package tests passed. Staged validation, `py_compile`, diff-check, gitleaks, and both independent spec/standards reviews passed.
 - S13/#26 is complete in PR #66 (`24b07ea`): strict ordered raw DevTools event contract, QA-1 candidate-render and QA-2 upload/read-back/final-compile gates, nine-state per-screenshot matrix coverage, source/screenshot/before-after/final-compile provenance, sanitized evidence, prerequisite-missing semantics, Simulator `verified_device=false`, and hermetic loopback negative controls; 11/11 DevTools tests plus the S12/S11/S10/S01 regression set passed. Staged validation, `py_compile`, diff-check, gitleaks, and both independent spec/standards reviews passed.
-- S14A/#27 is the next story to implement. Full forward evaluation, migration, and public cutover remain unimplemented.
+- S14A/#27 is complete in PR #68 (`6fb9c6a`): QA advisory-only integration, Ask Park-owned QA_PASS/QA_BLOCKED/QA_FAIL routing, Diagnose confirmation, complete receipt-closure checks before causal rewind, interrupted/recovery module preservation, persisted human-gate blocking, privacy-safe packets, and bounded repair/reset/escalation controls; 9/9 S14A tests plus the 101-test S01/S10–S13 regression set passed. Staged validation, `py_compile`, diff-check, gitleaks, and both independent spec/standards reviews passed.
+- S14B/#28 is the next story to implement. Migration, isolated trial, and public cutover remain unimplemented.
 
 ## 下一步
 
-1. Implement [#27 / S14A](https://github.com/zinan92/wechat-miniprogram-shipping/issues/27): QA → Diagnose → Ask Park repair routing.
-2. Merge S14A after its gates pass, update this Registry, then make the next dependency-ready story ready from the new `main`.
+1. Implement [#28 / S14B](https://github.com/zinan92/wechat-miniprogram-shipping/issues/28): full independent forward-evaluation matrix.
+2. Merge S14B after its gates pass, update this Registry, then make the next dependency-ready story ready from the new `main`.
 3. Preserve hard WIP=1 and the published dependency order through #33/S16D.
 
 ## Evidence
@@ -53,5 +54,7 @@
 - [PR #60](https://github.com/zinan92/wechat-miniprogram-shipping/pull/60)
 - [PR #62](https://github.com/zinan92/wechat-miniprogram-shipping/pull/62)
 - [PR #64](https://github.com/zinan92/wechat-miniprogram-shipping/pull/64)
+- [PR #66](https://github.com/zinan92/wechat-miniprogram-shipping/pull/66)
+- [PR #68](https://github.com/zinan92/wechat-miniprogram-shipping/pull/68)
 - [PR #66](https://github.com/zinan92/wechat-miniprogram-shipping/pull/66)
 - [Implementation Dev Queue](https://github.com/zinan92/wechat-miniprogram-shipping/issues?q=is%3Aissue%20state%3Aopen%20label%3Aenhancement)
