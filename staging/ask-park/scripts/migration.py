@@ -27,6 +27,7 @@ SHA_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
 PRIVATE_MARKERS = ("secret", "token", "password", "openid", "credential", "private_key", "api_key", "cookie", "appid", "environment_id")
 PRIVATE_PREFIXES = ("http://", "https://", "file://", "cloud://", "/Users/", "/private/", "~/")
 CHECKPOINTS = ("staging-failure", "canonical-validation-failure", "selector-failure", "post-retirement-failure")
+CANONICAL_REPOSITORY = "zinan92/wechat-miniprogram-shipping"
 
 
 class MigrationError(ValueError):
@@ -93,7 +94,7 @@ def _file_manifest(root: Path) -> tuple[list[dict[str, str]], str]:
         normalized = relative.lower().replace("-", "_")
         if any(marker in normalized for marker in PRIVATE_MARKERS) or any(part in normalized for part in (".env", "credentials", "cookies")):
             continue
-        rows.append({"file_alias": relative, "digest": _hash_bytes(path.read_bytes())})
+        rows.append({"file_ref": "redacted:file-" + hashlib.sha256(relative.encode()).hexdigest()[:16], "digest": _hash_bytes(path.read_bytes())})
     manifest = {"files": rows}
     return rows, _hash_json(manifest)
 
@@ -146,16 +147,22 @@ def package_manifest(package_root: Path) -> dict[str, Any]:
     return result
 
 
-def stage_canonical_install(source_root: Path, staging_parent: Path) -> dict[str, Any]:
+def stage_canonical_install(source_root: Path, staging_parent: Path, *, scanned_roots: list[Path] | None = None) -> dict[str, Any]:
     """Copy the staged package outside scanned roots and validate closure."""
 
+    if source_root.is_symlink():
+        _fail("MIGRATION_SOURCE_SYMLINK", "canonical staging refuses a symlink source root", "source_root")
     if source_root.resolve() == staging_parent.resolve() or staging_parent.resolve().is_relative_to(source_root.resolve()):
         _fail("MIGRATION_STAGING_SCOPE", "staging destination must be outside the source root", "staging_parent")
+    for scanned_root in scanned_roots or []:
+        scanned = Path(scanned_root).resolve()
+        if staging_parent.resolve() == scanned or staging_parent.resolve().is_relative_to(scanned):
+            _fail("MIGRATION_SCANNED_ROOT_SCOPE", "staging destination must be outside every scanned root", "staging_parent")
     if any(path.is_symlink() for path in source_root.rglob("*")):
         _fail("MIGRATION_SOURCE_SYMLINK", "canonical staging refuses source symlinks that could escape the package", "source_root")
     destination = staging_parent / "ask-park"
     if destination.exists():
-        shutil.rmtree(destination)
+        _fail("MIGRATION_DESTINATION_EXISTS", "staging destination must be a new controlled directory", "staging_parent")
     staging_parent.mkdir(parents=True, exist_ok=True)
     shutil.copytree(source_root, destination, symlinks=False)
     layout_spec = importlib.util.spec_from_file_location("migration_layout", LAYOUT)
@@ -171,18 +178,21 @@ def stage_canonical_install(source_root: Path, staging_parent: Path) -> dict[str
 
 
 def pre_migration_receipt(inventory: Mapping[str, Any], staged: Mapping[str, Any], *, repository_identity: str, history_ref: str) -> dict[str, Any]:
-    if not _alias(repository_identity) or not _alias(history_ref):
-        _fail("MIGRATION_REPOSITORY_ID", "repository identity/history must be aliases", "repository")
+    if repository_identity != CANONICAL_REPOSITORY or not _alias(history_ref):
+        _fail("MIGRATION_REPOSITORY_ID", "repository identity must remain zinan92/wechat-miniprogram-shipping and history must be an alias", "repository")
     if not isinstance(inventory, Mapping) or inventory.get("kind") != "skill-inventory":
         _fail("MIGRATION_INVENTORY_REQUIRED", "pre-migration receipt requires a validated inventory", "inventory")
     if not isinstance(staged, Mapping) or staged.get("checkpoint") != "staged":
         _fail("MIGRATION_STAGED_REQUIRED", "pre-migration receipt requires a staged package", "staged")
+    manifest = staged.get("manifest")
+    if not isinstance(manifest, Mapping) or manifest.get("kind") != "ask-park-staged-manifest" or not _digest(manifest.get("package_digest")) or not _digest(manifest.get("manifest_digest")):
+        _fail("MIGRATION_MANIFEST_INVALID", "staged manifest must carry verified package and manifest digests", "staged.manifest")
     result = {
         "schema_version": 1,
         "kind": "pre-migration-receipt",
         "repository": {"identity": repository_identity, "history_ref": history_ref},
         "inventory_digest": _hash_json(inventory),
-        "staged_manifest_digest": staged["manifest"]["manifest_digest"],
+        "staged_manifest_digest": manifest["manifest_digest"],
         "legacy_enabled": True,
         "canonical_enabled": False,
         "checkpoints": list(CHECKPOINTS),
@@ -202,12 +212,28 @@ def rollback_checkpoint(workspace: Path, checkpoint: str) -> dict[str, Any]:
     canonical = workspace / "canonical-install"
     partial = workspace / "partial-install"
     legacy = workspace / "legacy-backup"
+    if canonical.exists() or partial.exists() or legacy.exists():
+        _fail("MIGRATION_ROLLBACK_WORKSPACE_DIRTY", "rollback rehearsal requires a new empty workspace", "workspace")
+    failure_kind = checkpoint
+    selector_before = "legacy-enabled"
+    retirement_before = False
+    if checkpoint == "staging-failure":
+        partial.mkdir(parents=True, exist_ok=True)
+        (partial / "partial-marker").write_text("copy-interrupted", encoding="utf-8")
+        shutil.rmtree(partial)
+    elif checkpoint == "canonical-validation-failure":
+        canonical.mkdir(parents=True, exist_ok=True)
+        (canonical / "invalid-marker").write_text("validation-failed", encoding="utf-8")
+        shutil.rmtree(canonical)
+    elif checkpoint == "selector-failure":
+        canonical.mkdir(parents=True, exist_ok=True)
+        (canonical / "selector-state").write_text("selector-readback-failed", encoding="utf-8")
+        shutil.rmtree(canonical)
+    elif checkpoint == "post-retirement-failure":
+        canonical.mkdir(parents=True, exist_ok=True)
+        (canonical / "canonical-marker").write_text("canonical-installed", encoding="utf-8")
+        retirement_before = True
+        shutil.rmtree(canonical)
     legacy.mkdir(parents=True, exist_ok=True)
     (legacy / "legacy-marker").write_text("preserved", encoding="utf-8")
-    canonical.mkdir(parents=True, exist_ok=True)
-    (canonical / "partial-marker").write_text(checkpoint, encoding="utf-8")
-    partial.mkdir(parents=True, exist_ok=True)
-    (partial / "partial-marker").write_text(checkpoint, encoding="utf-8")
-    shutil.rmtree(canonical)
-    shutil.rmtree(partial)
-    return {"checkpoint": checkpoint, "canonical_removed": not canonical.exists(), "partial_removed": not partial.exists(), "legacy_preserved": (legacy / "legacy-marker").read_text(encoding="utf-8") == "preserved"}
+    return {"checkpoint": checkpoint, "failure_kind": failure_kind, "selector_before": selector_before, "retirement_before": retirement_before, "canonical_removed": not canonical.exists(), "partial_removed": not partial.exists(), "legacy_preserved": (legacy / "legacy-marker").read_text(encoding="utf-8") == "preserved"}

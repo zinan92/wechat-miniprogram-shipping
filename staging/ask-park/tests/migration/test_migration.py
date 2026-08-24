@@ -56,9 +56,9 @@ class MigrationTests(unittest.TestCase):
     def test_stage_manifest_and_pre_migration_receipt_leave_source_unchanged(self):
         before = self.migration.package_manifest(SOURCE)
         with tempfile.TemporaryDirectory(prefix="migration-stage-") as directory:
-            staged = self.migration.stage_canonical_install(SOURCE, Path(directory))
+            staged = self.migration.stage_canonical_install(SOURCE, Path(directory), scanned_roots=[Path(directory) / "scanned-root"])
             inventory = self.migration.inventory_roots([{"root_alias": "source", "path": str(SOURCE), "enabled": True}])
-            receipt = self.migration.pre_migration_receipt(inventory, staged, repository_identity="wechat-miniprogram-shipping", history_ref="main-history")
+            receipt = self.migration.pre_migration_receipt(inventory, staged, repository_identity="zinan92/wechat-miniprogram-shipping", history_ref="main-history")
             self.assertTrue((Path(directory) / "ask-park" / "SKILL.md").is_file())
         after = self.migration.package_manifest(SOURCE)
         self.assertEqual(before["package_digest"], after["package_digest"])
@@ -67,11 +67,34 @@ class MigrationTests(unittest.TestCase):
         self.assertTrue(receipt["receipt_digest"].startswith("sha256:"))
         self.assertNotIn(str(ROOT), json.dumps(receipt))
 
+    def test_staging_rejects_destination_inside_scanned_root(self):
+        with tempfile.TemporaryDirectory(prefix="migration-scope-") as directory:
+            scanned = Path(directory) / "scanned"
+            scanned.mkdir()
+            with self.assertRaises(self.migration.MigrationError) as raised:
+                self.migration.stage_canonical_install(SOURCE, scanned / "staged", scanned_roots=[scanned])
+            self.assertEqual(raised.exception.code, "MIGRATION_SCANNED_ROOT_SCOPE")
+
+    def test_pre_migration_receipt_rejects_noncanonical_identity_and_manifest(self):
+        with tempfile.TemporaryDirectory(prefix="migration-receipt-") as directory:
+            staged = self.migration.stage_canonical_install(SOURCE, Path(directory))
+            inventory = self.migration.inventory_roots([{"root_alias": "source", "path": str(SOURCE), "enabled": True}])
+            with self.assertRaises(self.migration.MigrationError) as raised:
+                self.migration.pre_migration_receipt(inventory, staged, repository_identity="evil-repo", history_ref="fake-history")
+            self.assertEqual(raised.exception.code, "MIGRATION_REPOSITORY_ID")
+            bad = dict(staged)
+            bad["manifest"] = dict(staged["manifest"])
+            bad["manifest"]["manifest_digest"] = "not-a-digest"
+            with self.assertRaises(self.migration.MigrationError) as raised:
+                self.migration.pre_migration_receipt(inventory, bad, repository_identity="zinan92/wechat-miniprogram-shipping", history_ref="main-history")
+            self.assertEqual(raised.exception.code, "MIGRATION_MANIFEST_INVALID")
+
     def test_rollbacks_cover_all_checkpoints_and_preserve_legacy_backup(self):
         for checkpoint in self.migration.CHECKPOINTS:
             with tempfile.TemporaryDirectory(prefix="migration-rollback-") as directory:
                 result = self.migration.rollback_checkpoint(Path(directory), checkpoint)
             self.assertEqual(result["checkpoint"], checkpoint)
+            self.assertEqual(result["failure_kind"], checkpoint)
             self.assertTrue(result["canonical_removed"])
             self.assertTrue(result["partial_removed"])
             self.assertTrue(result["legacy_preserved"])

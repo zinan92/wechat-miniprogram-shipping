@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "fixture_id": "migration-hermetic-v1",
-  "repository_identity": "wechat-miniprogram-shipping",
+  "repository_identity": "zinan92/wechat-miniprogram-shipping",
   "history_ref": "main-history",
   "root_aliases": ["codex-skills", "local-skills"],
   "canonical_identity": "ask-park",

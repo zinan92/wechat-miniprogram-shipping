@@ -8,7 +8,7 @@ active local skill, the selector, or a configured scanned root.
 
 `inventory_roots()` accepts configured root aliases, path inputs, and enabled
 state. It enumerates symlink status, a redacted realpath reference, file count,
-per-file digest, and manifest digest. Paths, credentials, URLs, private names,
+redacted per-file references/digests, and manifest digest. Paths, credentials, URLs, private names,
 and secret bytes never enter the returned record.
 
 ## Staging and receipt
