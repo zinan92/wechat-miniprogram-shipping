@@ -63,18 +63,15 @@ ASK PARK · MINI PROGRAM SHIPPING
 
 ## 安装
 
-匿名 clean clone 后，按下面命令复制完整 closure。`CODEX_HOME` 可指向隔离目录；默认是 `$HOME/.codex`。
+S16B 只做隔离 clean-clone proof，不修改你的 active local skill。按下面命令复制完整 closure 到受控临时 `CODEX_HOME`；真实本机切换由 S16C 负责。
 
 ```bash
 git clone https://github.com/zinan92/wechat-miniprogram-shipping.git
 cd wechat-miniprogram-shipping
 
-CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
-INSTALL_ROOT="$CODEX_HOME/skills/ask-park"
-mkdir -p "$INSTALL_ROOT"
-cp -R SKILL.md agents modules quality references scripts tests fixtures "$INSTALL_ROOT/"
-
 CLEAN_CLONE_HOME="$(mktemp -d -t clean-clone-home-XXXXXX)"
+# clean-clone.py copies exactly: SKILL.md, agents, modules, quality,
+# references, scripts, tests, and fixtures.
 python3 scripts/clean-clone.py --repo-root . --codex-home "$CLEAN_CLONE_HOME"
 ```
 
