@@ -174,8 +174,6 @@ RECEIPT_KEYS = {
 }
 SOURCE_KEYS = {"repository_alias", "commit_sha"}
 ISSUE_KEYS = {"id"}
-COMPONENT_KEYS = {"kind", "alias", "digest", "state", "reason"}
-TARGET_KEYS = {"alias", "environment_contract_alias", "redacted_ref", "state", "reason"}
 INVALIDATION_KEYS = {"on", "downstream_modules", "causal_rewind", "declared_by"}
 CAUSAL_REWIND_KEYS = {"earliest_invalidated_module", "reason_code", "invalidated_receipt_ids"}
 
@@ -534,11 +532,12 @@ def _validate_receipt_component(document: dict[str, Any], key: str, prefix: str,
     if not _is_mapping(value):
         errors.add("RECEIPT_TYPE", f"{prefix}.{key}", "component must be an object")
         return
-    _reject_unknown(value, COMPONENT_KEYS, f"{prefix}.{key}", errors)
     if not_applicable:
+        _reject_unknown(value, {"state", "reason"}, f"{prefix}.{key}", errors)
         if value.get("state") != "not-applicable" or not _is_nonempty_string(value.get("reason")):
             errors.add("RECEIPT_NOT_APPLICABLE", f"{prefix}.{key}", "not-applicable component requires state and reason")
         return
+    _reject_unknown(value, {"kind", "alias", "digest"}, f"{prefix}.{key}", errors)
     errors.required(value, ("kind", "alias", "digest"), f"{prefix}.{key}", "RECEIPT_REQUIRED_FIELD")
     if not _is_nonempty_string(value.get("kind")) or not _safe_identifier(value.get("alias")):
         errors.add("RECEIPT_COMPONENT", f"{prefix}.{key}", "component kind and alias must be stable")
@@ -627,11 +626,11 @@ def validate_receipt(document: Any) -> ValidationResult:
     if not _is_mapping(target):
         errors.add("RECEIPT_TARGET", "receipt.target", "target must be an object")
     elif not_applicable:
-        _reject_unknown(target, TARGET_KEYS, "receipt.target", errors)
+        _reject_unknown(target, {"state", "alias", "redacted_ref"}, "receipt.target", errors)
         if target.get("state") != "not-applicable" or not _safe_identifier(target.get("alias")) or not _is_redacted_ref(target.get("redacted_ref")):
             errors.add("RECEIPT_TARGET", "receipt.target", "not-applicable target requires alias and redacted_ref")
     else:
-        _reject_unknown(target, TARGET_KEYS, "receipt.target", errors)
+        _reject_unknown(target, {"alias", "environment_contract_alias", "redacted_ref"}, "receipt.target", errors)
         errors.required(target, ("alias", "environment_contract_alias", "redacted_ref"), "receipt.target", "RECEIPT_REQUIRED_FIELD")
         if not _safe_identifier(target.get("alias")) or not _safe_identifier(target.get("environment_contract_alias")):
             errors.add("RECEIPT_TARGET", "receipt.target", "target aliases must be stable")

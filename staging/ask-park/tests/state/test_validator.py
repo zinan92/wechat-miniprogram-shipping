@@ -196,6 +196,16 @@ class ReceiptContractTests(unittest.TestCase):
         self.assertFalse(result.valid)
         self.assertIn("RECEIPT_DIGEST", {error.code for error in result.errors})
 
+    def test_applicable_components_reject_not_applicable_shape_fields(self):
+        receipt = self.fixture("valid-receipt.json")
+        receipt["artifact"]["state"] = "not-applicable"
+        receipt["artifact"]["reason"] = "should not be accepted for an applicable artifact"
+        receipt["target"]["reason"] = "should not be accepted for an applicable target"
+        result = self.validator.validate_document(receipt)
+
+        self.assertFalse(result.valid)
+        self.assertIn("UNKNOWN_FIELD", {error.code for error in result.errors})
+
     def test_s01_does_not_accept_s10_qa_manifest_or_result_records(self):
         receipt = self.fixture("valid-receipt.json")
         receipt["candidate_manifest"] = {"digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}
