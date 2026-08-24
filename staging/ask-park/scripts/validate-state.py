@@ -459,14 +459,17 @@ def validate_state(document: Any) -> ValidationResult:
             allowed_current_states = ("completed",)
         if current_record.get("applicability") == "required" and current_record.get("activity_state") not in allowed_current_states:
             errors.add("STATE_CURRENT_MODULE", "state.current_module", "current module must remain current, failed, or blocked-external")
-        if terminal_state == "target-achieved" and current_record.get("activity_state") == "completed":
-            if current_record.get("evidence_state") != "valid" or not _safe_identifier(current_record.get("receipt_id")):
-                errors.add("STATE_TERMINAL", "state.project_terminal_state", "target-achieved requires completed valid evidence and a receipt ID")
-            for later in MODULES[MODULE_INDEX[current_module] + 1 :]:
-                later_record = modules.get(later)
-                if _is_mapping(later_record) and later_record.get("applicability") == "required":
-                    errors.add("STATE_TERMINAL", "state.project_terminal_state", "target-achieved requires later modules to be explicitly not-applicable")
-                    break
+        if terminal_state == "target-achieved":
+            if current_record.get("applicability") != "required":
+                errors.add("STATE_TERMINAL", "state.current_module", "target-achieved current module must be required")
+            elif current_record.get("activity_state") == "completed":
+                if current_record.get("evidence_state") != "valid" or not _safe_identifier(current_record.get("receipt_id")):
+                    errors.add("STATE_TERMINAL", "state.project_terminal_state", "target-achieved requires completed valid evidence and a receipt ID")
+                for later in MODULES[MODULE_INDEX[current_module] + 1 :]:
+                    later_record = modules.get(later)
+                    if _is_mapping(later_record) and later_record.get("applicability") == "required":
+                        errors.add("STATE_TERMINAL", "state.project_terminal_state", "target-achieved requires later modules to be explicitly not-applicable")
+                        break
     active_records = [module for module in MODULES if _is_mapping(modules.get(module)) and modules[module].get("activity_state") == "current"]
     if len(active_records) > 1:
         errors.add("STATE_CURRENT_MODULE", "state.modules", "only one module may be current")

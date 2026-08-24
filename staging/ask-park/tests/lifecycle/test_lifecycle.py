@@ -187,6 +187,26 @@ class ModuleTransitionTests(LifecycleTestCase):
         self.assertEqual(state["project_state"], "target-achieved")
         self.assertEqual(state["current_module"], "experience")
 
+    def test_target_achieved_cannot_select_a_not_applicable_current_module(self):
+        state = self.fixture("experience-completed.json")
+        state["modules"]["device"]["activity_state"] = "completed"
+        state["modules"]["device"]["evidence_state"] = "valid"
+        state["modules"]["device"]["receipt_id"] = "device-r1"
+        state["modules"]["release"] = {
+            "applicability": "not-applicable",
+            "activity_state": "not-applicable",
+            "evidence_state": "not-applicable",
+            "receipt_id": None,
+            "not_applicable_reason": "Target stops before Release.",
+        }
+        state["current_module"] = "release"
+        self.assertCode(
+            "PROJECT_TARGET_EVIDENCE_REQUIRED",
+            self.lifecycle.transition_project,
+            state,
+            "target-achieved",
+        )
+
     def test_last_required_completion_sets_target_achieved(self):
         state = self.fixture("experience-current.json")
         state = self.lifecycle.transition_evidence(state, "experience", "valid")
@@ -339,6 +359,28 @@ class ReceiptLifecycleTests(LifecycleTestCase):
         self.assertEqual(state["modules"]["cloudbase"]["activity_state"], "locked")
         self.assertEqual(state["modules"]["experience"]["activity_state"], "locked")
         self.assertNotIn("next_module", state)
+
+    def test_terminal_project_state_freezes_rewind_and_invalidation(self):
+        state = self.fixture("experience-completed.json")
+        state["project_state"] = "abandoned"
+        self.assertCode(
+            "ILLEGAL_PROJECT_TRANSITION",
+            self.lifecycle.rewind_state,
+            state,
+            earliest_module="build",
+            invalidated_receipt_ids=["build-r1"],
+            reason_code="source-changed",
+        )
+        legacy = copy.deepcopy(state)
+        legacy.pop("project_state")
+        legacy["project_terminal_state"] = "abandoned"
+        self.assertCode(
+            "ILLEGAL_PROJECT_TRANSITION",
+            self.lifecycle.invalidate_state,
+            legacy,
+            {"build-r1": self.fixture("valid-build-receipt.json")},
+            changed_fields=["source.commit_sha"],
+        )
 
 
 class HumanGateLifecycleTests(LifecycleTestCase):

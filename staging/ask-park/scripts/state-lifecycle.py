@@ -362,7 +362,12 @@ def transition_project(state: Mapping[str, Any], target: str) -> dict[str, Any]:
     if target == "target-achieved":
         current_module = result["current_module"]
         current_record = result["modules"][current_module]
-        if current_record["activity_state"] not in ("completed", "not-applicable") or current_record["evidence_state"] not in ("valid", "not-applicable") or (current_record["applicability"] == "required" and not _VALIDATOR._safe_identifier(current_record.get("receipt_id"))):
+        if (
+            current_record["applicability"] != "required"
+            or current_record["activity_state"] != "completed"
+            or current_record["evidence_state"] != "valid"
+            or not _VALIDATOR._safe_identifier(current_record.get("receipt_id"))
+        ):
             _error("PROJECT_TARGET_EVIDENCE_REQUIRED", "target-achieved requires a completed current target with valid evidence and a receipt", "current_module")
         later_required = [
             module for module in MODULES[MODULE_INDEX[current_module] + 1 :]
@@ -668,6 +673,7 @@ def rewind_state(
     """Mark the earliest prerequisite current and lock every later module."""
 
     result = _validate_state(state)
+    _ensure_project_progressable(result)
     if earliest_module not in MODULES:
         _error("UNKNOWN_MODULE", "earliest invalidated module is not sequential", "rewind.earliest_invalidated_module")
     record = result["modules"][earliest_module]
@@ -691,9 +697,11 @@ def invalidate_state(
 ) -> tuple[dict[str, Any], InvalidationResult]:
     """Convenience operation: compute receipt closure, then rewind state."""
 
+    validated_state = _validate_state(state)
+    _ensure_project_progressable(validated_state)
     invalidation = invalidate_receipts(receipts, changed_fields=changed_fields, reason_code=reason_code)
     if invalidation.earliest_invalidated_module is None:
-        return _validate_state(state), invalidation
+        return validated_state, invalidation
     return rewind_state(
         state,
         earliest_module=invalidation.earliest_invalidated_module,
