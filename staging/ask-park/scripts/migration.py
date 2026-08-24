@@ -151,6 +151,8 @@ def stage_canonical_install(source_root: Path, staging_parent: Path) -> dict[str
 
     if source_root.resolve() == staging_parent.resolve() or staging_parent.resolve().is_relative_to(source_root.resolve()):
         _fail("MIGRATION_STAGING_SCOPE", "staging destination must be outside the source root", "staging_parent")
+    if any(path.is_symlink() for path in source_root.rglob("*")):
+        _fail("MIGRATION_SOURCE_SYMLINK", "canonical staging refuses source symlinks that could escape the package", "source_root")
     destination = staging_parent / "ask-park"
     if destination.exists():
         shutil.rmtree(destination)

@@ -76,6 +76,18 @@ class MigrationTests(unittest.TestCase):
             self.assertTrue(result["partial_removed"])
             self.assertTrue(result["legacy_preserved"])
 
+    def test_staging_rejects_source_symlink_escape(self):
+        with tempfile.TemporaryDirectory(prefix="migration-symlink-") as directory:
+            source = Path(directory) / "source"
+            source.mkdir()
+            (source / "SKILL.md").write_text("---\nname: ask-park\ndescription: test\n---\n", encoding="utf-8")
+            (source / "agents").mkdir()
+            (source / "agents" / "openai.yaml").write_text("interface: {}\n", encoding="utf-8")
+            (source / "linked").symlink_to(Path(directory), target_is_directory=True)
+            with self.assertRaises(self.migration.MigrationError) as raised:
+                self.migration.stage_canonical_install(source, Path(directory) / "out")
+            self.assertEqual(raised.exception.code, "MIGRATION_SOURCE_SYMLINK")
+
     def test_root_identity_and_fixture_are_not_active_cutover(self):
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
         self.assertEqual(fixture["canonical_identity"], "ask-park")
