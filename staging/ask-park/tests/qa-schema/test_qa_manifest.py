@@ -58,6 +58,12 @@ class QAManifestContractTests(unittest.TestCase):
         invalid = self.validator.validate_document(qa1_with_target, "result")
         self.assertFalse(invalid.valid)
         self.assertIn("QA_TARGET_RECEIPT", {error.code for error in invalid.errors})
+        qa1_bad_predecessor = copy.deepcopy(qa1)
+        qa1_bad_predecessor["predecessor_receipt_ids"] = [None]
+        qa1_bad_predecessor["digest"] = self.validator.canonical_digest(qa1_bad_predecessor)
+        invalid = self.validator.validate_document(qa1_bad_predecessor, "result")
+        self.assertFalse(invalid.valid)
+        self.assertIn("QA_PREDECESSORS", {error.code for error in invalid.errors})
 
     def test_evidence_matrix_requires_after_identity_and_final_compile(self):
         row = self.fixture("evidence-row-valid.json")
@@ -67,6 +73,14 @@ class QAManifestContractTests(unittest.TestCase):
         result = self.validator.validate_document(malformed, "evidence")
         self.assertFalse(result.valid)
         self.assertIn("EVIDENCE_FINAL_COMPILE", {error.code for error in result.errors})
+        malformed = copy.deepcopy(row)
+        malformed["after_evidence"]["source_or_package_identity"] = "not an alias"
+        malformed["after_evidence"]["unknown_field"] = "unexpected"
+        result = self.validator.validate_document(malformed, "evidence")
+        self.assertFalse(result.valid)
+        codes = {error.code for error in result.errors}
+        self.assertIn("QA_UNKNOWN_FIELD", codes)
+        self.assertIn("QA_AFTER", codes)
 
     def test_historical_before_exception_does_not_excuse_missing_after(self):
         row = self.fixture("evidence-row-valid.json")

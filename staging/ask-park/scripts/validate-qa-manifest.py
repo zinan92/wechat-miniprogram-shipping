@@ -262,6 +262,8 @@ def validate_result(document: Any) -> ValidationResult:
             errors.add("QA_TARGET_RECEIPT", "manifest.target_receipt_id", "post-target result requires a target receipt alias")
         if not pre_target and (not isinstance(document.get("predecessor_receipt_ids"), list) or any(not _is_alias(item) for item in document.get("predecessor_receipt_ids", []))):
             errors.add("QA_PREDECESSORS", "manifest.predecessor_receipt_ids", "post-target result requires predecessor receipt aliases")
+        if pre_target and (not isinstance(document.get("predecessor_receipt_ids"), list) or any(not _is_alias(item) for item in document.get("predecessor_receipt_ids", []))):
+            errors.add("QA_PREDECESSORS", "manifest.predecessor_receipt_ids", "pre-target result requires predecessor receipt aliases")
         if not _is_iso(document.get("observed_at")):
             errors.add("QA_TIMESTAMP", "manifest.observed_at", "observed_at must be ISO-8601")
         if not isinstance(document.get("passed_checks"), list) or not document.get("passed_checks"):
@@ -284,6 +286,10 @@ def validate_evidence(document: Any) -> ValidationResult:
         errors.add("QA_TYPE", "evidence", "evidence row must be an object")
         return ValidationResult("evidence", {}, errors.errors)
     _walk_privacy(document, "evidence", errors)
+    allowed_evidence_keys = {"schema_version", "kind", "surface", "route", "viewport", "role", "data_state", "equivalence", "evidence_mode", "tool", "before_evidence", "after_evidence", "limitations", "evidence_refs", "store_governance"}
+    for key in document:
+        if key not in allowed_evidence_keys:
+            errors.add("QA_UNKNOWN_FIELD", "evidence.<key>", "field is not in the evidence schema")
     for key in ("surface", "route", "viewport", "role", "data_state", "equivalence", "tool", "evidence_mode", "after_evidence", "limitations"):
         if key not in document:
             errors.add("QA_REQUIRED_FIELD", f"evidence.{key}", "required evidence field is missing")
@@ -296,19 +302,31 @@ def validate_evidence(document: Any) -> ValidationResult:
     tool = document.get("tool")
     if not isinstance(tool, dict) or not all(isinstance(tool.get(key), str) and tool.get(key) for key in ("name", "version", "runtime_or_base_library")):
         errors.add("QA_TOOL", "evidence.tool", "tool/runtime identity is required")
+    elif any(key not in {"name", "version", "runtime_or_base_library"} for key in tool):
+        errors.add("QA_UNKNOWN_FIELD", "evidence.tool.<key>", "field is not in the tool schema")
     before = document.get("before_evidence")
-    if before is not None and (document.get("evidence_mode") == "ephemeral-only" or not isinstance(before, dict) or not _is_redacted(before.get("ref")) or not _is_digest(before.get("sha256")) or not _is_iso(before.get("captured_at")) or not isinstance(before.get("identity"), str) or not before.get("identity")):
+    if before is not None and isinstance(before, dict) and any(key not in {"ref", "sha256", "captured_at", "identity"} for key in before):
+        errors.add("QA_UNKNOWN_FIELD", "evidence.before_evidence.<key>", "field is not in before evidence schema")
+    if before is not None and (document.get("evidence_mode") == "ephemeral-only" or not isinstance(before, dict) or not _is_redacted(before.get("ref")) or not _is_digest(before.get("sha256")) or not _is_iso(before.get("captured_at")) or not (_is_alias(before.get("identity")) or _is_digest(before.get("identity")))):
         errors.add("QA_BEFORE", "evidence.before_evidence", "before evidence identity is invalid")
     after = document.get("after_evidence")
     if not isinstance(after, dict):
         errors.add("EVIDENCE_AFTER_REQUIRED", "evidence.after_evidence", "after evidence is always required")
     else:
+        if any(key not in {"ref", "sha256", "captured_at", "source_or_package_identity", "final_compile_receipt_id"} for key in after):
+            errors.add("QA_UNKNOWN_FIELD", "evidence.after_evidence.<key>", "field is not in after evidence schema")
         for key in ("ref", "source_or_package_identity", "final_compile_receipt_id"):
             if key == "ref" and document.get("evidence_mode") == "ephemeral-only":
                 if after.get(key) is not None:
                     errors.add("QA_EPHEMERAL_REFERENCE", "evidence.after_evidence.ref", "ephemeral evidence cannot persist nested refs")
                 continue
-            if not isinstance(after.get(key), str) or not after.get(key):
+            if key == "source_or_package_identity":
+                valid_identity = _is_alias(after.get(key)) or _is_digest(after.get(key))
+            elif key == "final_compile_receipt_id":
+                valid_identity = _is_alias(after.get(key))
+            else:
+                valid_identity = isinstance(after.get(key), str) and bool(after.get(key))
+            if not valid_identity:
                 errors.add("EVIDENCE_FINAL_COMPILE" if key == "final_compile_receipt_id" else "QA_AFTER", f"evidence.after_evidence.{key}", "after evidence field is required")
         if document.get("evidence_mode") != "ephemeral-only" and not _is_redacted(after.get("ref")):
             errors.add("QA_AFTER_REF", "evidence.after_evidence.ref", "after evidence ref must be redacted")
@@ -351,6 +369,10 @@ def validate_qa_state(document: Any) -> ValidationResult:
         errors.add("QA_PREREQUISITE", "qa.control_outcome", "unavailable evaluator requires prerequisite-missing")
     if qa.get("execution_state") == "unavailable" and qa.get("result") != "none":
         errors.add("QA_PREREQUISITE", "qa.result", "unavailable evaluator cannot issue a result")
+    if qa.get("execution_state") in {"ready", "running"} and qa.get("result") != "none":
+        errors.add("QA_STATE", "qa.result", "ready/running state must keep result none")
+    if qa.get("execution_state") == "complete" and qa.get("result") == "none":
+        errors.add("QA_STATE", "qa.result", "complete state must carry a terminal QA result")
     if qa.get("result") == "QA_BLOCKED" and qa.get("execution_state") != "complete":
         errors.add("QA_STATE", "qa.execution_state", "blocked result must be complete")
     if qa.get("execution_state") == "unavailable" and qa.get("result") == "QA_BLOCKED":
