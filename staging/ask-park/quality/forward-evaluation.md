@@ -7,6 +7,10 @@ explicit allowed inputs and exclusions. It contains no intended verdict,
 Its canonical digest binds every operation, input alias, fixture closure,
 allowed-input list, and exclusion; a tampered descriptor is rejected before
 execution.
+Each scenario receives its own adapter with only its declared fixture aliases;
+the recorded `reads` list is checked against that closure before the row is
+accepted. Shared surface controls run separately through their own explicit
+union closure and are never smuggled into a scenario's inputs.
 
 ## Fresh bounded execution
 

@@ -39,6 +39,8 @@ _DEVTOOLS = _load_module("ask_park_devtools_for_forward_eval", _SCRIPTS / "devto
 _EVALUATOR = _load_module("ask_park_evaluator_for_forward_eval", _SCRIPTS / "qa-evaluator.py")
 _QA_SCHEMA = _load_module("ask_park_schema_for_forward_eval", _SCRIPTS / "validate-qa-manifest.py")
 _QA_ROUTING = _load_module("ask_park_routing_for_forward_eval", _SCRIPTS / "qa-routing.py")
+_CANONICAL_SCENARIOS = json.loads((_FIXTURES / "forward-eval/scenarios.json").read_text(encoding="utf-8"))
+CANONICAL_OPERATIONS = {item["id"]: item["operation"] for item in _CANONICAL_SCENARIOS}
 
 ARCHITECTURE_IDS = {f"A{index:02d}" for index in range(1, 24)}
 QA_IDS = {f"Q{index:02d}" for index in range(1, 23)}
@@ -196,6 +198,8 @@ def validate_manifest(manifest: Any) -> list[dict[str, Any]]:
                 _fail("FORWARD_SCENARIO_ID", "scenario identity fields must be aliases", f"manifest.{key}")
         if item["id"] in seen or item["id"] not in ALL_IDS:
             _fail("FORWARD_SCENARIO_ID", "scenario ID is duplicate or outside the merged matrix", "manifest.id")
+        if item["operation"] != CANONICAL_OPERATIONS.get(item["id"]):
+            _fail("FORWARD_OPERATION_BINDING", "scenario operation is not bound to its reviewed case", "manifest.operation")
         seen.add(item["id"])
         if item["track"] not in TRACKS:
             _fail("FORWARD_SCENARIO_TRACK", "scenario track is invalid", "manifest.track")
@@ -209,10 +213,17 @@ def validate_manifest(manifest: Any) -> list[dict[str, Any]]:
         _fail("FORWARD_SCENARIO_COVERAGE", "scenario IDs do not cover the full matrix", "manifest.id")
     canonical_path = _FIXTURES / "forward-eval" / "scenarios.json"
     canonical = json.loads(canonical_path.read_text(encoding="utf-8"))
-    digest = lambda value: hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
-    if digest(manifest) != digest(canonical):
+    if _manifest_digest(manifest) != _manifest_digest(canonical):
         _fail("FORWARD_MANIFEST_BINDING", "scenario bounds and operations must match the reviewed canonical manifest", "manifest")
     return normalized
+
+
+def _manifest_digest(value: Any) -> str:
+    try:
+        canonical = _QA_SCHEMA._canonical_json(value).encode("utf-8")
+    except (AttributeError, ValueError):
+        _fail("FORWARD_MANIFEST_CANONICAL", "manifest is outside the shared JCS JSON profile", "manifest")
+    return "sha256:" + hashlib.sha256(canonical).hexdigest()
 
 
 def _state(adapter: RecordReplayAdapter, alias: str) -> dict[str, Any]:
@@ -361,6 +372,77 @@ def _architecture(case_id: str, adapter: RecordReplayAdapter) -> dict[str, Any]:
     _fail("FORWARD_CASE_UNKNOWN", "architecture scenario is not implemented", case_id)
 
 
+def _browser_surface_control(adapter: RecordReplayAdapter) -> dict[str, Any]:
+    matrix = adapter.read("browser-matrix")
+    passed = _BROWSER.compare_candidate_target(adapter.read("browser-candidate"), adapter.read("browser-target"), matrix)
+    defect = _BROWSER.run_hermetic_qa2(adapter.read("browser-candidate"), adapter.read("browser-stale"), matrix)
+    restored = _BROWSER.run_hermetic_qa2(adapter.read("browser-candidate"), adapter.read("browser-target"), matrix)
+    return {"pass": passed["result"], "defect": defect["result"], "restore": restored["result"], "nested_side_effects": {"external_network_events": defect["adapter"]["external_network_events"], "mutation_events": defect["adapter"]["mutation_events"]}}
+
+
+def _devtools_surface_control(adapter: RecordReplayAdapter) -> dict[str, Any]:
+    matrix = adapter.read("dev-matrix")
+    passed = _DEVTOOLS.run_hermetic_qa(adapter.read("dev-events-valid"), matrix)
+    defect = _DEVTOOLS.run_hermetic_qa(adapter.read("dev-events-defect"), matrix)
+    restored = _DEVTOOLS.run_hermetic_qa(adapter.read("dev-events-valid"), matrix)
+    return {"pass": passed["result"], "defect": defect["result"], "restore": restored["result"], "nested_side_effects": {"external_network_events": defect["adapter"]["external_network_events"], "mutation_events": defect["adapter"]["platform_mutation_events"]}}
+
+
+def _evaluator_surface_control(adapter: RecordReplayAdapter) -> dict[str, Any]:
+    sha_a = "sha256:" + "a" * 64
+    sha_b = "sha256:" + "b" * 64
+    state = _EVALUATOR.start_attempt(worker_identity="worker-forward-a", evaluator_identity="evaluator-forward-b", candidate_sha=sha_a, worktree_sha=sha_a, issue_contract_id="forward-eval")
+    packet = adapter.read("qa-fail")
+    packet.update({"worker_identity": "worker-forward-a", "evaluator_identity": "evaluator-forward-b", "candidate_sha_before": sha_a, "candidate_sha_after": sha_a, "worktree_sha_before": sha_a, "worktree_sha_after": sha_a, "issue_contract_id": "forward-eval", "attempt": 1})
+    state = _EVALUATOR.complete_attempt(state, packet)
+    fail_result = state["result"]
+    state = _EVALUATOR.repair_attempt(state, candidate_sha=sha_b, worktree_sha=sha_b, same_contract=True, prior_result="QA_FAIL")
+    state["execution_state"] = "running"
+    packet = adapter.read("qa-pass")
+    packet.update({"worker_identity": "worker-forward-a", "evaluator_identity": "evaluator-forward-b", "candidate_sha_before": sha_b, "candidate_sha_after": sha_b, "worktree_sha_before": sha_b, "worktree_sha_after": sha_b, "issue_contract_id": "forward-eval", "attempt": 2})
+    restored = _EVALUATOR.complete_attempt(state, packet)
+    third = _EVALUATOR.start_attempt(worker_identity="worker-forward-a", evaluator_identity="evaluator-forward-b", candidate_sha=sha_a, worktree_sha=sha_a, issue_contract_id="forward-eval")
+    for number, current, next_sha in ((1, sha_a, sha_b), (2, sha_b, "sha256:" + "c" * 64)):
+        packet = adapter.read("qa-fail")
+        packet.update({"worker_identity": "worker-forward-a", "evaluator_identity": "evaluator-forward-b", "candidate_sha_before": current, "candidate_sha_after": current, "worktree_sha_before": current, "worktree_sha_after": current, "issue_contract_id": "forward-eval", "attempt": number})
+        third["attempt"] = number
+        third = _EVALUATOR.complete_attempt(third, packet)
+        third = _EVALUATOR.repair_attempt(third, candidate_sha=next_sha, worktree_sha=next_sha, same_contract=True, prior_result="QA_FAIL")
+        third["execution_state"] = "running"
+    third_sha = "sha256:" + "c" * 64
+    packet = adapter.read("qa-fail")
+    packet.update({"worker_identity": "worker-forward-a", "evaluator_identity": "evaluator-forward-b", "candidate_sha_before": third_sha, "candidate_sha_after": third_sha, "worktree_sha_before": third_sha, "worktree_sha_after": third_sha, "issue_contract_id": "forward-eval", "attempt": 3})
+    third["attempt"] = 3
+    third = _EVALUATOR.complete_attempt(third, packet)
+    fourth_rejected = False
+    try:
+        _EVALUATOR.repair_attempt(third, candidate_sha="sha256:" + "d" * 64, worktree_sha="sha256:" + "d" * 64, same_contract=True, prior_result="QA_FAIL")
+    except _EVALUATOR.EvaluatorError:
+        fourth_rejected = True
+    return {"pass": restored["result"], "defect": fail_result, "candidate_changed": restored["candidate_sha"] == sha_b, "third_result": third["result"], "third_control_outcome": third["control_outcome"], "fourth_rejected": fourth_rejected}
+
+
+def _qa_schema_surface_control(adapter: RecordReplayAdapter) -> dict[str, Any]:
+    result = adapter.read("qa-result-qa1")
+    failed = _QA_SCHEMA.invalidate_result(result, candidate_manifest_digest="sha256:" + "f" * 64)
+    return {"pass": result["result"], "defect": failed["result"], "reset": failed["result"] == "none"}
+
+
+def _state_surface_control(adapter: RecordReplayAdapter) -> dict[str, Any]:
+    state = _state(adapter, "state-experience-completed")
+    failed = _LIFECYCLE.transition_evidence(copy.deepcopy(state), "experience", "stale")
+    restored = _state(adapter, "state-experience-completed")
+    return {"pass": state["modules"]["experience"]["evidence_state"], "defect": failed["rewind"]["active"], "restore": restored["modules"]["experience"]["evidence_state"]}
+
+
+def _qa_routing_surface_control(adapter: RecordReplayAdapter) -> dict[str, Any]:
+    before = _state(adapter, "state-experience-completed")
+    defect = _QA_ROUTING.route_qa_result(before, adapter.read("qa-fail"), diagnosis=adapter.read("diagnosis-device"))
+    recovered = _LIFECYCLE.recover_diagnose(defect["state"])
+    restored = _QA_ROUTING.route_qa_result(recovered, adapter.read("qa-pass"))
+    return {"pass": restored["route_kind"], "defect": defect["route_kind"], "restore": restored["state"]["diagnose"]["state"]}
+
+
 def _surface_controls(adapter: RecordReplayAdapter) -> dict[str, Any]:
     browser_matrix = adapter.read("browser-matrix")
     browser_pass = _BROWSER.compare_candidate_target(adapter.read("browser-candidate"), adapter.read("browser-target"), browser_matrix)
@@ -433,11 +515,9 @@ def _surface_controls(adapter: RecordReplayAdapter) -> dict[str, Any]:
 
 def _qa(case_id: str, adapter: RecordReplayAdapter) -> dict[str, Any]:
     if case_id == "Q01":
-        controls = _surface_controls(adapter)
-        return controls["devtools"]
+        return _devtools_surface_control(adapter)
     if case_id == "Q02":
-        controls = _surface_controls(adapter)
-        return controls["browser"]
+        return _browser_surface_control(adapter)
     if case_id == "Q03":
         events = adapter.read("dev-events-valid")
         matrix = adapter.read("dev-matrix")
@@ -489,8 +569,8 @@ def _qa(case_id: str, adapter: RecordReplayAdapter) -> dict[str, Any]:
         result = _QA_ROUTING.route_qa_result(_state(adapter, "state-experience-completed"), adapter.read("qa-fail"), diagnosis=adapter.read("diagnosis-build"), receipts=_receipts(adapter, "receipt-build", "receipt-cloudbase", "receipt-experience"))
         return {"current_module": result["state"]["current_module"], "diagnose": result["state"]["diagnose"]["state"], "invalidated": result["invalidated_receipt_ids"]}
     if case_id == "Q12":
-        controls = _surface_controls(adapter)
-        return {"third_failure": controls["evaluator"]["third_result"], "third_control_outcome": controls["evaluator"]["third_control_outcome"], "candidate_changed": controls["evaluator"]["candidate_changed"]}
+        controls = _evaluator_surface_control(adapter)
+        return {"third_failure": controls["third_result"], "third_control_outcome": controls["third_control_outcome"], "candidate_changed": controls["candidate_changed"], "fourth_rejected": controls["fourth_rejected"]}
     if case_id == "Q13":
         state = _EVALUATOR.prerequisite_missing(origin_module="build")
         return {"execution_state": state["qa"]["execution_state"], "control_outcome": state["qa"]["control_outcome"]}
@@ -551,19 +631,35 @@ def _artifact_tree_control() -> bool:
 def run_forward_evaluation(manifest: Any, *, records: Mapping[str, Any] | None = None) -> dict[str, Any]:
     scenarios = validate_manifest(manifest)
     source_records = records or load_records()
+    for scenario in scenarios:
+        source_records.setdefault(scenario["input_alias"], {"scenario_id": scenario["id"], "operation": scenario["operation"], "allowed_inputs": scenario["allowed_inputs"], "exclusions": scenario["exclusions"]})
     declared_aliases = {fixture_alias for scenario in scenarios for fixture_alias in scenario["fixtures"]}
     for required_alias in declared_aliases:
         if required_alias not in source_records:
             _fail("FORWARD_FIXTURE_MISSING", "manifest fixture alias is not available to the adapter", required_alias)
-    adapter = RecordReplayAdapter({alias: source_records[alias] for alias in declared_aliases}, allowed_aliases=declared_aliases)
     rows = []
+    scenario_network: list[dict[str, str]] = []
+    scenario_mutation: list[dict[str, str]] = []
     for scenario in scenarios:
+        scenario_aliases = set(scenario["fixtures"]) | {scenario["input_alias"]}
+        scenario_records = {alias: source_records[alias] for alias in scenario_aliases}
+        adapter = RecordReplayAdapter(scenario_records, allowed_aliases=scenario_aliases)
+        input_record = adapter.read(scenario["input_alias"])
+        if not isinstance(input_record, Mapping) or input_record.get("scenario_id") != scenario["id"]:
+            _fail("FORWARD_INPUT_BINDING", "scenario input alias does not bind the current scenario", scenario["input_alias"])
         observations = _architecture(scenario["id"], adapter) if scenario["track"] == "architecture" else _qa(scenario["id"], adapter)
         if not _safe(observations):
             _fail("FORWARD_OUTPUT_PRIVATE", "scenario oracle contains a private value", scenario["id"])
-        rows.append({"id": scenario["id"], "track": scenario["track"], "operation": scenario["operation"], "observations": observations})
-    adapter.assert_no_external_side_effects()
-    controls = _surface_controls(adapter)
+        adapter.assert_no_external_side_effects()
+        actual_reads = [event["alias"] for event in adapter.events if event["kind"] == "read"]
+        if not set(actual_reads) <= scenario_aliases:
+            _fail("FORWARD_UNBOUNDED_INPUT", "scenario read escaped its declared fixture closure", scenario["id"])
+        scenario_network.extend(adapter.external_network_events)
+        scenario_mutation.extend(adapter.mutation_events)
+        rows.append({"id": scenario["id"], "track": scenario["track"], "operation": scenario["operation"], "input_alias": scenario["input_alias"], "allowed_inputs": copy.deepcopy(scenario["allowed_inputs"]), "exclusions": copy.deepcopy(scenario["exclusions"]), "reads": actual_reads, "observations": observations})
+    control_adapter = RecordReplayAdapter({alias: source_records[alias] for alias in declared_aliases}, allowed_aliases=declared_aliases)
+    controls = _surface_controls(control_adapter)
+    control_adapter.assert_no_external_side_effects()
     nested_network = []
     nested_mutation = []
     for surface in controls.get("nested_side_effects", {}).values():
@@ -584,8 +680,8 @@ def run_forward_evaluation(manifest: Any, *, records: Mapping[str, Any] | None =
         "qa_count": sum(row["track"] == "qa" for row in rows),
         "results": rows,
         "surface_controls": controls,
-        "external_network_events": adapter.external_network_events + nested_network,
-        "mutation_events": adapter.mutation_events + nested_mutation,
+        "external_network_events": scenario_network + control_adapter.external_network_events + nested_network,
+        "mutation_events": scenario_mutation + control_adapter.mutation_events + nested_mutation,
         "artifact_tree_clean": artifact_clean,
-        "manifest_digest": "sha256:" + hashlib.sha256(json.dumps(manifest, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest(),
+        "manifest_digest": _manifest_digest(manifest),
     }

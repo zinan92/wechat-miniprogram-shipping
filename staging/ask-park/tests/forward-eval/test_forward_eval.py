@@ -32,6 +32,10 @@ class ForwardEvalTests(unittest.TestCase):
         self.assertEqual(result["architecture_count"], 23)
         self.assertEqual(result["qa_count"], 22)
         self.assertTrue(all("observations" in row for row in result["results"]))
+        manifest_by_id = {item["id"]: item for item in self.manifest}
+        for row in result["results"]:
+            declared = set(manifest_by_id[row["id"]]["fixtures"]) | {manifest_by_id[row["id"]]["input_alias"]}
+            self.assertTrue(set(row["reads"]) <= declared, row["id"])
         self.assertEqual(result["external_network_events"], [])
         self.assertEqual(result["mutation_events"], [])
         self.assertTrue(result["artifact_tree_clean"])
@@ -96,7 +100,7 @@ class ForwardEvalTests(unittest.TestCase):
         changed[0]["operation"] = "unrelated-operation"
         with self.assertRaises(self.eval.ForwardEvalError) as raised:
             self.eval.validate_manifest(changed)
-        self.assertEqual(raised.exception.code, "FORWARD_MANIFEST_BINDING")
+        self.assertEqual(raised.exception.code, "FORWARD_OPERATION_BINDING")
 
     def test_custom_fixture_records_are_privacy_checked_before_execution(self):
         records = self.eval.load_records()
