@@ -156,7 +156,7 @@ def run_local_cutover(*, repository_root: Path, scanned_roots: list[tuple[str, P
         _fail("CUTOVER_TARGET_SCOPE", "legacy and canonical targets must be direct children of a scanned root", "targets")
     if legacy_root.name != "wechat-miniprogram-shipping" or canonical_root.name != "ask-park" or not (legacy_root / "SKILL.md").is_file() or "name: wechat-miniprogram-shipping" not in (legacy_root / "SKILL.md").read_text(encoding="utf-8"):
         _fail("CUTOVER_TARGET_IDENTITY", "legacy/canonical target names and identities do not match the cutover contract", "targets")
-    if not _outside(migration_root, roots) or not _outside(backup_root, roots) or (not receipt_path.resolve().is_relative_to(repository_root.resolve()) and receipt_path.parent.name != "receipts"):
+    if not _outside(migration_root, roots) or not _outside(backup_root, roots) or (not receipt_path.resolve().is_relative_to(repository_root.resolve()) and (receipt_path.parent.name != "receipts" or not _outside(receipt_path.parent, roots))):
         _fail("CUTOVER_SCOPE", "migration and backup roots must be outside scanned roots", "scope")
     if migration_root.exists() or not migration_root.name.startswith("ask-park-migration-"):
         _fail("CUTOVER_MIGRATION_SCOPE", "migration root must be a new managed workspace", "migration_root")
