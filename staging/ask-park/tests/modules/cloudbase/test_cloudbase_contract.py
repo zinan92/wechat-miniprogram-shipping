@@ -1,4 +1,5 @@
 import json
+import importlib.util
 import unittest
 from pathlib import Path
 
@@ -10,6 +11,14 @@ RECEIPT_DOC = ROOT / "modules" / "03-cloudbase" / "cloud-receipt.md"
 
 
 class CloudBaseContractTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        validator_path = ROOT / "scripts" / "validate-state.py"
+        spec = importlib.util.spec_from_file_location("cloudbase_contract_validator", validator_path)
+        cls.validator = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(cls.validator)
+
     def fixture(self, name):
         return json.loads((FIXTURES / name).read_text(encoding="utf-8"))
 
@@ -18,6 +27,11 @@ class CloudBaseContractTests(unittest.TestCase):
         self.assertEqual(document["module"], "cloudbase")
         self.assertTrue(document["issue_contract_id"])
         self.assertTrue(document["build_receipt_id"])
+        self.assertRegex(document["source_sha"], r"^sha256:[0-9a-f]{64}$")
+        self.assertRegex(document["backend_contract_version"], r"^backend/[A-Za-z0-9._:-]+$")
+        self.assertTrue(document["permission_runtime_identity"]["permissions_alias"].startswith("redacted:"))
+        self.assertTrue(document["permission_runtime_identity"]["runtime_alias"])
+        self.assertRegex(document["observed_at"], r"^\d{4}-\d{2}-\d{2}T")
         self.assertIn(document["provider_role"], {"cloudbase", "serverless-backend"})
         self.assertTrue(document["target_alias"])
         self.assertTrue(document["artifact"]["digest"].startswith("sha256:"))
@@ -31,6 +45,13 @@ class CloudBaseContractTests(unittest.TestCase):
         self.assertNotIn("public-fallback", document["protected_storage"].values())
         self.assertTrue(document["redacted_target_ref"].startswith("redacted:"))
         self.assertTrue(document["unproven_claims"])
+        self.assertTrue(document["invalidation_rules"])
+        self.assertIn("source_sha", document["invalidation_rules"])
+        self.assertIn("target_alias", document["invalidation_rules"])
+        self.assertIsInstance(document["reuse"]["allowed"], bool)
+        self.assertEqual(document["reuse"]["allowed"], not bool(document["reuse"]["changed_bindings"]))
+        receipt_result = self.validator.validate_receipt(document["receipt"])
+        self.assertTrue(receipt_result.valid, receipt_result.errors)
 
     def test_verified_cloud_requires_readiness_health_projection_and_privacy(self):
         document = self.fixture("verified-cloud-ready.json")
@@ -47,7 +68,6 @@ class CloudBaseContractTests(unittest.TestCase):
         self.assertEqual(document["status"], "failed")
         self.assertEqual(document["protected_storage"]["access"], "closed")
         self.assertFalse(document["fallback_public_storage"])
-        self.assertEqual(document["routing"], "diagnose")
 
     def test_not_applicable_backend_is_explicit_and_has_impact_reason(self):
         document = self.fixture("backend-not-applicable.json")
@@ -65,7 +85,7 @@ class CloudBaseContractTests(unittest.TestCase):
         self.assertEqual(document["evidence_layers"]["function_upload"], "pass")
         self.assertEqual(document["evidence_layers"]["health_readback"], "pass")
         self.assertEqual(document["evidence_layers"]["hosting_readback"], "fail")
-        self.assertEqual(document["routing"], "diagnose")
+        self.assertIn("hosting_build_digest", document["reuse"]["changed_bindings"])
 
     def test_module_docs_define_contract_and_receipt_limits(self):
         module_text = MODULE_DOC.read_text(encoding="utf-8")

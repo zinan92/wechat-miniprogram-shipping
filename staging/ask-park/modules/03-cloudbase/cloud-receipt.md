@@ -13,6 +13,12 @@ module: cloudbase
 status: verified-cloud | failed | blocked-external | not-applicable
 issue_contract_id: stable alias
 build_receipt_id: build receipt alias
+source_sha: named source identity
+backend_contract_version: backend/vN
+permission_runtime_identity:
+  permissions_alias: redacted:...
+  runtime_alias: stable runtime alias
+observed_at: ISO-8601
 provider_role: cloudbase | serverless-backend
 target_alias: stable target alias
 redacted_target_ref: redacted:...
@@ -40,6 +46,12 @@ protected_storage:
   access: closed
   short_lived_assets: aliases-only | not-applicable
 fallback_public_storage: false
+not_applicable_reason: null | explicit reason
+impact_analysis: null | explicit client/target impact
+invalidation_rules: [source_sha, backend_contract_version, permission_runtime_identity, artifact.digest, production_package.digest, target_alias]
+reuse:
+  allowed: true | false
+  changed_bindings: []
 receipt:
   receipt_id: cloudbase-rN
   module: cloudbase
@@ -60,8 +72,11 @@ routing: continue | diagnose | blocked-external
   does not skip later Experience/Device/Release decisions when those remain in
   scope.
 - Reuse requires unchanged source/package/target/provider/permission/runtime
-  identity and unchanged backend contract. Any drift is stale and returns to
-  Ask Park for causal invalidation.
+  identity and unchanged backend contract. `source_sha`,
+  `backend_contract_version`, `permission_runtime_identity`, target/package
+  digests, and `invalidation_rules` make those bindings explicit. Any drift is
+  stale and returns to Ask Park for causal invalidation; `reuse.allowed` is
+  false when `changed_bindings` is non-empty.
 - Protected storage stays closed. Short-lived authorized assets are represented
   by aliases and `redacted:` references; public storage is never a fallback.
 - Provider adapters may differ in commands, but this role contract and receipt
