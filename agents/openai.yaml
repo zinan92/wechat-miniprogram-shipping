@@ -1,4 +1,4 @@
 interface:
-  display_name: "WeChat Mini Program Shipping"
-  short_description: "Ship Mini Programs with frontend and CloudBase gates"
-  default_prompt: "Use $wechat-miniprogram-shipping to plan and ship this WeChat Mini Program with explicit frontend, CloudBase, device, and release gates."
+  display_name: "Ask Park"
+  short_description: "Route Mini Program shipping through evidence-gated modules"
+  default_prompt: "Use $ask-park to route this Mini Program task through the correct shipping module and QA gate."

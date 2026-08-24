@@ -8,6 +8,7 @@ import importlib.util
 import json
 import shutil
 import tempfile
+import argparse
 from pathlib import Path
 from typing import Any
 
@@ -126,3 +127,18 @@ def missing_file_failure(installed_root: Path) -> dict[str, Any]:
         except CleanCloneError as exc:
             failed = exc.code == "CLEAN_CLONE_MISSING_DEPENDENCY"
         return {"missing_file_rejected": failed}
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--repo-root", type=Path, default=Path.cwd())
+    parser.add_argument("--codex-home", type=Path, required=True)
+    args = parser.parse_args(argv)
+    installed = install_isolated(args.repo_root, args.codex_home)
+    result = {"install": installed["receipt"], "canary": canary(installed["destination"]), "missing_file": missing_file_failure(installed["destination"])}
+    print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
