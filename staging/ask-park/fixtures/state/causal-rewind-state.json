@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "contract_version": "ask-park.state/v1",
+  "project_id": "wechat-mvp",
+  "project_state": "active",
+  "current_module": "build",
+  "control_outcome": "none",
+  "modules": {
+    "plan": {
+      "applicability": "required",
+      "activity_state": "completed",
+      "evidence_state": "valid",
+      "receipt_id": "plan-r1"
+    },
+    "build": {
+      "applicability": "required",
+      "activity_state": "current",
+      "evidence_state": "stale",
+      "receipt_id": "build-r1"
+    },
+    "cloudbase": {
+      "applicability": "required",
+      "activity_state": "locked",
+      "evidence_state": "absent",
+      "receipt_id": "cloudbase-r1"
+    },
+    "experience": {
+      "applicability": "required",
+      "activity_state": "locked",
+      "evidence_state": "absent",
+      "receipt_id": "experience-r1"
+    },
+    "device": {
+      "applicability": "required",
+      "activity_state": "locked",
+      "evidence_state": "absent",
+      "receipt_id": "device-r1"
+    },
+    "release": {
+      "applicability": "required",
+      "activity_state": "locked",
+      "evidence_state": "absent",
+      "receipt_id": "release-r1"
+    }
+  },
+  "diagnose": {
+    "state": "active",
+    "outcome": "unresolved",
+    "interrupted_module": "build",
+    "recovery_goal": "revalidate software receipt after source change"
+  },
+  "human_gate": {
+    "state": "not-needed",
+    "action_scope": null,
+    "authorizing_role": null,
+    "requested_at": null,
+    "authorized_at": null,
+    "evidence_ref": null
+  },
+  "rewind": {
+    "active": true,
+    "earliest_invalidated_module": "build",
+    "reason_code": "source-changed",
+    "invalidated_receipt_ids": ["build-r1", "cloudbase-r1", "experience-r1", "device-r1", "release-r1"]
+  }
+}
