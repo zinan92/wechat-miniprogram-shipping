@@ -1,0 +1,18 @@
+{
+  "receipt_id": "plan-r1",
+  "receipt_type": "module",
+  "schema_version": 1,
+  "contract_version": "ask-park.receipt/v1",
+  "module": "plan",
+  "status": "valid",
+  "applicability": "required",
+  "source": {"repository_alias": "wechat-project", "commit_sha": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+  "issue": {"id": "12"},
+  "predecessor_receipt_ids": [],
+  "artifact": {"kind": "contract", "alias": "plan-contract", "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+  "package": {"kind": "source-tree", "alias": "candidate-package", "digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},
+  "target": {"alias": "local", "environment_contract_alias": "local-mock", "redacted_ref": "redacted:local-target"},
+  "invalidation_rules": {"on": ["contract_version", "artifact.digest", "package.digest", "acceptance_scope"], "downstream_modules": ["build", "cloudbase", "experience", "device", "release"], "causal_rewind": false, "declared_by": "ask-park"},
+  "issued_at": "2026-08-24T10:00:00Z",
+  "evidence_refs": ["redacted:plan-output"]
+}

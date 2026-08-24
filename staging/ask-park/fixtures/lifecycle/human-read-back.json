@@ -1,0 +1,10 @@
+{
+  "state": "read-back",
+  "action_type": "release",
+  "action_scope": "release-v1",
+  "authorizing_role": "owner",
+  "requested_at": "2026-08-24T10:00:00Z",
+  "authorized_at": "2026-08-24T10:01:00Z",
+  "evidence_ref": "redacted:release-readback",
+  "authority_basis": "owner decision recorded outside credentials"
+}

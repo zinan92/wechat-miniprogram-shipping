@@ -1,0 +1,18 @@
+{
+  "receipt_id": "build-r1",
+  "receipt_type": "module",
+  "schema_version": 1,
+  "contract_version": "ask-park.receipt/v1",
+  "module": "build",
+  "status": "valid",
+  "applicability": "required",
+  "source": {"repository_alias": "wechat-project", "commit_sha": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+  "issue": {"id": "13"},
+  "predecessor_receipt_ids": ["plan-r1"],
+  "artifact": {"kind": "software", "alias": "mock-vertical-slice", "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+  "package": {"kind": "source-tree", "alias": "candidate-package", "digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},
+  "target": {"alias": "local", "environment_contract_alias": "local-mock", "redacted_ref": "redacted:local-target"},
+  "invalidation_rules": {"on": ["source.commit_sha", "contract_version", "artifact.digest", "package.digest", "acceptance_scope"], "downstream_modules": ["cloudbase", "experience", "device", "release"], "causal_rewind": false, "declared_by": "ask-park"},
+  "issued_at": "2026-08-24T10:02:00Z",
+  "evidence_refs": ["redacted:build-output"]
+}

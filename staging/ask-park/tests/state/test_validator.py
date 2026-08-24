@@ -103,6 +103,26 @@ class StateContractTests(unittest.TestCase):
         self.assertFalse(result.valid)
         self.assertIn("STATE_TERMINAL", {error.code for error in result.errors})
 
+    def test_target_achieved_cannot_use_a_not_applicable_current_module(self):
+        state = self.fixture("valid-state.json")
+        state["project_state"] = "target-achieved"
+        state["current_module"] = "release"
+        for module in ("plan", "build", "cloudbase", "experience", "device"):
+            state["modules"][module]["activity_state"] = "completed"
+            state["modules"][module]["evidence_state"] = "valid"
+            state["modules"][module]["receipt_id"] = f"{module}-r1"
+        state["modules"]["release"] = {
+            "applicability": "not-applicable",
+            "activity_state": "not-applicable",
+            "evidence_state": "not-applicable",
+            "receipt_id": None,
+            "not_applicable_reason": "Target stops before Release.",
+        }
+
+        result = self.validator.validate_document(state)
+        self.assertFalse(result.valid)
+        self.assertIn("STATE_TERMINAL", {error.code for error in result.errors})
+
 
 class ReceiptContractTests(unittest.TestCase):
     @classmethod
