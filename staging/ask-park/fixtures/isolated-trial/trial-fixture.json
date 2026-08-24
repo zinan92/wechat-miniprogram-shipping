@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "fixture_id": "synthetic-reader-trial-v1",
+  "project_alias": "synthetic-reader",
+  "candidate_alias": "synthetic-candidate-a",
+  "candidate_source_sha": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "target_alias": "synthetic-target-a",
+  "browser_source_sha_raw": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "browser_target_alias_raw": "localhost-target-valid",
+  "browser_candidate_source_sha": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "browser_target_alias": "synthetic-target-a",
+  "devtools_candidate_source_sha": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "devtools_project_alias_raw": "reader-project",
+  "environment_contract_alias": "synthetic-hosting-v1",
+  "transport": "synthetic-localhost-only",
+  "surfaces": ["browser", "devtools-simulator", "qa-routing", "human-gate"],
+  "known_defect_seeds": ["stale-live-bundle", "duplicate-title", "double-safe-area", "stale-package", "missing-final-compile"],
+  "forbidden_targets": ["real-project", "live-provider", "production-environment"],
+  "evidence_mode": "sanitized-persisted",
+  "limitations": ["No real WeChat, CloudBase, customer project, or physical device is touched."]
+}
