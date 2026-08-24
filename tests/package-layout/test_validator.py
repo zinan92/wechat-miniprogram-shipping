@@ -122,6 +122,8 @@ class FixtureHarnessTests(unittest.TestCase):
 
         with self.assertRaises(module.ExternalSideEffectError):
             module.assert_no_external_side_effects([{"kind": "network", "target": "example.invalid"}])
+        with self.assertRaises(module.ExternalSideEffectError):
+            module.assert_no_external_side_effects([{"kind": "filesystem_write", "target": "fixture"}])
 
         adapter = module.RecordReplayAdapter({})
         for action in (

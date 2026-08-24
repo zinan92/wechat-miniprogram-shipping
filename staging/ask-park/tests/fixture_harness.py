@@ -29,7 +29,7 @@ class RecordReplayAdapter:
 
 
 def assert_no_external_side_effects(events):
-    forbidden = {"network", "mutation", "upload", "delete", "payment", "review"}
-    violations = [event for event in events if event.get("kind") in forbidden]
+    allowed = {"read"}
+    violations = [event for event in events if event.get("kind") not in allowed]
     if violations:
         raise ExternalSideEffectError(f"external fixture side effect: {violations!r}")
