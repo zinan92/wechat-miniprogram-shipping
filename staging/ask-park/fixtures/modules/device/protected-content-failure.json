@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "module": "device",
+  "status": "failed",
+  "experience_receipt_id": "experience-r1",
+  "experience_version_alias": "experience-v1",
+  "matrix": [
+    {"device_class": "ios", "device_profile": "redacted:iphone-profile", "role": "member", "task": "protected-image", "experience_version_alias": "experience-v1", "result": "fail", "observed_at": "2026-08-24T13:45:00Z"},
+    {"device_class": "android", "device_profile": "redacted:android-profile", "role": "member", "task": "protected-image", "experience_version_alias": "experience-v1", "result": "fail", "observed_at": "2026-08-24T13:46:00Z"}
+  ],
+  "evidence_ladder": {
+    "projection": {"result": "pass", "proves": "The server projection reports the member access state.", "cannot_prove": "It does not prove image pixels or client authorization."},
+    "http-reachability": {"result": "pass", "proves": "The image request reaches the target.", "cannot_prove": "HTTP success does not prove protected pixels are authorized."},
+    "pixels-layout": {"result": "fail", "proves": "The observed member route shows a protected-image failure.", "cannot_prove": "It does not identify the backend root cause alone."},
+    "expiry-fallback": {"result": "fail", "proves": "The fallback does not fail closed as expected.", "cannot_prove": "It does not prove unrelated assets."}
+  },
+  "weak_network": {"retry_policy": "one bounded retry then stable error", "expiry_policy": "expired asset fails closed and requests refresh"},
+  "client_logs": [{"source": "client", "request_id": "redacted:req-protected-1", "evidence_ref": "redacted:protected-client-log"}],
+  "attributed_client_events": ["redacted:req-protected-1"],
+  "client_log_summary": {"excluded_sources": ["cli", "server"]},
+  "human_gate": {"required": false, "ref": null},
+  "unproven_claims": ["The backend privacy/rules root cause must be diagnosed; Release remains unproven."],
+  "receipt": {
+    "receipt_id": "device-protected-failed-r1",
+    "receipt_type": "module",
+    "schema_version": 1,
+    "contract_version": "ask-park.receipt/v1",
+    "module": "device",
+    "status": "invalid",
+    "invalid_reason": "protected-content-observation-failed",
+    "applicability": "required",
+    "source": {"repository_alias": "reader-project", "commit_sha": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"},
+    "issue": {"id": "reader-vertical-slice"},
+    "predecessor_receipt_ids": ["experience-r1"],
+    "artifact": {"kind": "device-observation", "alias": "protected-image-failure", "digest": "sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"},
+    "package": {"kind": "experience-package", "alias": "experience-v1", "digest": "sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"},
+    "target": {"alias": "device-matrix-v1", "environment_contract_alias": "experience-v1", "redacted_ref": "redacted:device-observation"},
+    "invalidation_rules": {"on": ["source.commit_sha", "contract_version", "artifact.digest", "package.digest", "target.environment_contract_alias"], "downstream_modules": ["release"], "causal_rewind": false, "declared_by": "ask-park"},
+    "issued_at": "2026-08-24T13:47:00Z",
+    "evidence_refs": ["redacted:protected-content-failure"]
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "module": "device",
+  "status": "blocked-external",
+  "experience_receipt_id": "experience-r1",
+  "experience_version_alias": "experience-v1",
+  "matrix": [
+    {"device_class": "ios", "device_profile": "redacted:iphone-profile", "role": "member", "task": "read-and-save", "experience_version_alias": "experience-v1", "result": "pass", "observed_at": "2026-08-24T13:35:00Z"},
+    {"device_class": "android", "device_profile": "redacted:android-profile", "role": "member", "task": "read-and-save", "experience_version_alias": "experience-v1", "result": "blocked", "observed_at": "2026-08-24T13:36:00Z"}
+  ],
+  "evidence_ladder": {
+    "projection": {"result": "pass", "proves": "Projection is available for the target version.", "cannot_prove": "It does not prove pixels."},
+    "http-reachability": {"result": "pass", "proves": "The client request reaches the target.", "cannot_prove": "It does not prove device behavior."},
+    "pixels-layout": {"result": "blocked", "proves": "No physical observation was completed.", "cannot_prove": "It cannot prove the Android path."},
+    "expiry-fallback": {"result": "pass", "proves": "The expiry contract is covered by the automation fixture.", "cannot_prove": "It does not prove physical pixels."}
+  },
+  "weak_network": {"retry_policy": "one bounded retry then stable error", "expiry_policy": "expired asset fails closed and requests refresh"},
+  "client_logs": [{"source": "client", "request_id": "redacted:req-2", "evidence_ref": "redacted:client-log-2"}],
+  "attributed_client_events": ["redacted:req-2"],
+  "client_log_summary": {"excluded_sources": ["cli", "server"]},
+  "automation_passed": true,
+  "human_gate": {"required": true, "ref": "redacted:physical-device-gate"},
+  "unproven_claims": ["Physical Android observation and formal Release remain unproven."],
+  "receipt": {
+    "receipt_id": "device-blocked-r1",
+    "receipt_type": "module",
+    "schema_version": 1,
+    "contract_version": "ask-park.receipt/v1",
+    "module": "device",
+    "status": "invalid",
+    "invalid_reason": "physical-observation-missing",
+    "applicability": "required",
+    "source": {"repository_alias": "reader-project", "commit_sha": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"},
+    "issue": {"id": "reader-vertical-slice"},
+    "predecessor_receipt_ids": ["experience-r1"],
+    "artifact": {"kind": "device-observation", "alias": "device-matrix-partial", "digest": "sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"},
+    "package": {"kind": "experience-package", "alias": "experience-v1", "digest": "sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"},
+    "target": {"alias": "device-matrix-partial", "environment_contract_alias": "experience-v1", "redacted_ref": "redacted:device-observation"},
+    "invalidation_rules": {"on": ["source.commit_sha", "contract_version", "artifact.digest", "package.digest", "target.environment_contract_alias"], "downstream_modules": ["release"], "causal_rewind": false, "declared_by": "ask-park"},
+    "issued_at": "2026-08-24T13:37:00Z",
+    "evidence_refs": ["redacted:physical-gate"]
+  }
+}
