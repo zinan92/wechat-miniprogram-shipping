@@ -61,9 +61,11 @@ ASK PARK · MINI PROGRAM SHIPPING
 下一步：确认根因和修复范围，再计算 causal receipt closure。
 ```
 
-## 安装
+## 安装、升级与回滚
 
-S16B 只做隔离 clean-clone proof，不修改你的 active local skill。按下面命令复制完整 closure 到受控临时 `CODEX_HOME`；真实本机切换由 S16C 负责。
+当前 canonical identity 是 `$ask-park`。旧 `$wechat-miniprogram-shipping` 仅作为迁移历史/可恢复 backup 记录，不是 active alias。S16C 已在实际 scanned roots 读回：一个 `$ask-park`、零个启用的旧 identity。
+
+先做匿名 clean-clone proof（不会修改 active local skill）：
 
 ```bash
 git clone https://github.com/zinan92/wechat-miniprogram-shipping.git
@@ -75,7 +77,18 @@ CLEAN_CLONE_HOME="$(mktemp -d -t clean-clone-home-XXXXXX)"
 python3 scripts/clean-clone.py --repo-root . --codex-home "$CLEAN_CLONE_HOME"
 ```
 
-安装 closure 包含：`SKILL.md`、`agents/openai.yaml`、`modules/`、`quality/`、`references/`、`scripts/`、`tests/`、`fixtures/`。不要只复制 README 或单个 SKILL.md。
+clean-clone receipt 会记录 closure digest、router/七模块/QA canary 和缺失依赖失败。安装 closure 包含：`SKILL.md`、`agents/openai.yaml`、`modules/`、`quality/`、`references/`、`scripts/`、`tests/`、`fixtures/`。
+
+升级时先 `git pull`，再重复上面的隔离 proof；不要直接覆盖一个未知的 active skill 目录。S16C 的实际切换由 `scripts/installed-cutover.py` 执行，要求 legacy/canonical 目标位于已盘点 scanned root，并在移动前创建 root 外 backup。
+
+回滚只使用已生成的 redacted backup 和 S16C receipt。路径不会写入公共
+receipt，因此不能从文档猜路径，也不要直接调用底层文件移动函数。当前没有
+可复制粘贴的 rollback-only 命令：这是一个 **operator-only** 流程，操作者
+必须先在本机 selector 中确认 legacy/canonical 目标和 backup 所在的
+scanned-root 外目录，再按 S16C wrapper 的 scope checks 执行；这保留了
+`legacy → backup → canonical` 的原子边界。回滚后必须重新运行 selector
+read-back、`scripts/clean-clone.py` 和 installed canary；这只是 skill 安装回滚，
+不是小程序或平台发布回滚。
 
 ## 调用
 
@@ -127,13 +140,22 @@ python3 scripts/clean-clone.py --repo-root . --codex-home "$CLEAN_CLONE_HOME"
 
 ```bash
 python3 tools/validate-package-layout.py --root . --mode final --json
-python3 -m unittest discover -s tests -p 'test_*.py'
+# Test folders use readable names such as `installed-cutover/`, so run every
+# file explicitly instead of relying on unittest package discovery.
+python3 - <<'PY'
+from pathlib import Path
+import subprocess
+import sys
+
+for test_file in sorted(Path("tests").rglob("test_*.py")):
+    subprocess.run([sys.executable, str(test_file)], check=True)
+PY
 python3 -m py_compile $(find scripts -type f -name '*.py' -print)
 git diff --check
 gitleaks detect --no-banner --source . --redact
 ```
 
-`scripts/clean-clone.py` 会在隔离 `CODEX_HOME` 中记录每个安装文件 digest、加载 router/七个模块/QA seams，并验证缺失依赖会失败。`scripts/migration.py` 只用于 staging/inventory；S16C 才处理实际 installed-path canary 和可回退 cutover。
+`scripts/clean-clone.py` 会在隔离 `CODEX_HOME` 中记录每个安装文件 digest、加载 router/七个模块/QA seams，并验证缺失依赖会失败。`receipts/installed-cutover.json` 和 `receipts/public-readback.json` 记录的是 skill 安装证据，不是微信小程序上线证据。
 
 ## 许可
 
