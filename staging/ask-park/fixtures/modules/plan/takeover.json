@@ -37,6 +37,9 @@
     "device": "required",
     "release": "not-applicable"
   },
+  "applicability_reasons": {
+    "release": "Formal release is outside this maintenance takeover target."
+  },
   "risk_map": [
     {"category": "intent", "status": "known", "impact": "The takeover preserves the existing first useful moment.", "mitigation": "Compare the request with the accepted reader contract."},
     {"category": "identity", "status": "unknown", "impact": "The repository and target account binding is not yet read back.", "mitigation": "Record a read-only identity/source investigation before Build."},

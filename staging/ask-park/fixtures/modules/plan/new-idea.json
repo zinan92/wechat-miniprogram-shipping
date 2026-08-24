@@ -36,6 +36,7 @@
     "device": "required",
     "release": "required"
   },
+  "applicability_reasons": {},
   "risk_map": [
     {"category": "intent", "status": "known", "impact": "The first useful moment must stay narrow.", "mitigation": "Keep the V1 outcome to one browse-open-save path."},
     {"category": "identity", "status": "unknown", "impact": "Owner and member roles may be mis-bound.", "mitigation": "Verify role and account association in a read-only investigation."},

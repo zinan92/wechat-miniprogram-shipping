@@ -31,6 +31,8 @@ applicability:
   experience: required | not-applicable
   device: required | not-applicable
   release: required | not-applicable
+applicability_reasons:
+  module: reason required when applicability is not-applicable
 risk_map:
   - category: intent | identity | backend | experience | device | release | migration
     status: known | unknown | mitigated | blocked
@@ -65,8 +67,8 @@ source_evidence: [aliases and limitations]
   search boundary, reusable finding, and reuse decision.
 - `acceptance_criteria` and every story's criteria contain 3–7 concrete,
   independently verifiable statements. Count is not a substitute for quality.
-- `applicability` has all six module keys. A `not-applicable` value carries a
-  reason in the applicable receipt/decision evidence; it is never an omission.
+- `applicability` has all six module keys. Every `not-applicable` value has a
+  matching `applicability_reasons` entry; it is never an omission.
 - The risk map covers every material risk category surfaced by the request.
   `unknown` is an honest state with a bounded mitigation, not a hidden guess.
 - `solution_search` records the search boundary and reuse decision. It does not

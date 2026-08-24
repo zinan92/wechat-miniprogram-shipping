@@ -36,6 +36,7 @@
     "device": "required",
     "release": "required"
   },
+  "applicability_reasons": {},
   "risk_map": [
     {"category": "intent", "status": "blocked", "impact": "The first useful moment differs between two accepted outcomes.", "mitigation": "Park chooses the baseline or signs a superseding contract."},
     {"category": "identity", "status": "known", "impact": "The existing project identity remains bound to the reader baseline.", "mitigation": "Preserve the baseline receipt chain until a superseding contract exists."},
