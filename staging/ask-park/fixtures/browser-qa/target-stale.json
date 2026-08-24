@@ -1,0 +1,12 @@
+{
+  "target_alias": "localhost-target-stale",
+  "source_sha": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "index_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "js_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "css_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "auth_mode": "member",
+  "deep_links": false,
+  "spa_fallback": true,
+  "mock_marker": true,
+  "render_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999"
+}
