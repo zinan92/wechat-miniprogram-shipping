@@ -2,6 +2,7 @@ import importlib.util
 import json
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -78,6 +79,29 @@ class StateContractTests(unittest.TestCase):
         result = self.validator.validate_document(state)
 
         self.assertTrue(result.valid, result.errors)
+
+    def test_released_state_retains_completed_release_and_readback_receipt(self):
+        state = self.fixture("valid-state.json")
+        state["project_state"] = "released"
+        state["current_module"] = "release"
+        for module in ("plan", "build", "cloudbase", "experience", "device"):
+            state["modules"][module]["activity_state"] = "completed"
+            state["modules"][module]["evidence_state"] = "valid"
+            state["modules"][module]["receipt_id"] = f"{module}-r1"
+        state["modules"]["release"] = {
+            "applicability": "required",
+            "activity_state": "completed",
+            "evidence_state": "valid",
+            "receipt_id": "release-r1",
+        }
+
+        result = self.validator.validate_document(state)
+        self.assertTrue(result.valid, result.errors)
+
+        state["modules"]["release"]["receipt_id"] = None
+        result = self.validator.validate_document(state)
+        self.assertFalse(result.valid)
+        self.assertIn("STATE_TERMINAL", {error.code for error in result.errors})
 
 
 class ReceiptContractTests(unittest.TestCase):
@@ -236,6 +260,22 @@ class ValidatorCliTests(unittest.TestCase):
         self.assertNotIn("synthetic-secret-marker-123", result.stdout)
         self.assertNotIn("https://private.example.invalid", result.stdout)
         self.assertNotIn(str(FIXTURES), result.stdout)
+
+        validator = load_validator()
+        state = json.loads((FIXTURES / "valid-state.json").read_text(encoding="utf-8"))
+        state["https://private.example.invalid/env"] = "fixture-value"
+        result = validator.validate_document(state)
+        self.assertFalse(result.valid)
+        with tempfile.NamedTemporaryFile("w", suffix=".json", encoding="utf-8") as handle:
+            json.dump(state, handle)
+            handle.flush()
+            cli = subprocess.run(
+                [sys.executable, str(VALIDATOR), "--input", handle.name, "--json"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        self.assertNotIn("https://private.example.invalid/env", cli.stdout)
 
 
 if __name__ == "__main__":

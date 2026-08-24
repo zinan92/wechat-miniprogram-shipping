@@ -254,7 +254,7 @@ def _reject_unknown(document: Any, allowed: set[str], prefix: str, errors: _Coll
         return
     for key in document:
         if key not in allowed:
-            errors.add("UNKNOWN_FIELD", f"{prefix}.{key}" if prefix else key, "field is not in the contract schema")
+            errors.add("UNKNOWN_FIELD", f"{prefix}.<key>" if prefix else "<key>", "field is not in the contract schema")
 
 
 def _walk_persistence_boundary(value: Any, path: str, errors: _Collector) -> None:
@@ -453,7 +453,10 @@ def validate_state(document: Any) -> ValidationResult:
     current_module = document.get("current_module")
     if current_module in MODULES and _is_mapping(modules.get(current_module)):
         current_record = modules[current_module]
-        if current_record.get("applicability") == "required" and current_record.get("activity_state") not in ("current", "failed", "blocked-external"):
+        allowed_current_states = ("current", "failed", "blocked-external")
+        if terminal_state == "released" and current_module == "release":
+            allowed_current_states = ("completed",)
+        if current_record.get("applicability") == "required" and current_record.get("activity_state") not in allowed_current_states:
             errors.add("STATE_CURRENT_MODULE", "state.current_module", "current module must remain current, failed, or blocked-external")
     active_records = [module for module in MODULES if _is_mapping(modules.get(module)) and modules[module].get("activity_state") == "current"]
     if len(active_records) > 1:
@@ -518,8 +521,8 @@ def validate_state(document: Any) -> ValidationResult:
     terminal = terminal_state
     if terminal == "released":
         release = modules.get("release")
-        if not _is_mapping(release) or release.get("activity_state") != "completed" or release.get("evidence_state") != "valid":
-            errors.add("STATE_TERMINAL", "state.project_terminal_state", "released requires completed valid Release evidence")
+        if not _is_mapping(release) or release.get("activity_state") != "completed" or release.get("evidence_state") != "valid" or not _safe_identifier(release.get("receipt_id")):
+            errors.add("STATE_TERMINAL", "state.project_terminal_state", "released requires completed valid Release evidence and a read-back receipt")
         if current_module != "release":
             errors.add("STATE_TERMINAL", "state.current_module", "released state retains current_module release")
 
