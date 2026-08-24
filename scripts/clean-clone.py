@@ -26,21 +26,34 @@ def _fail(code: str, message: str, path: str = "clean-clone") -> None:
 
 REQUIRED_DIRECTORIES = ("modules", "quality", "references", "scripts", "tests", "fixtures")
 REQUIRED_FILES = ("SKILL.md", "agents/openai.yaml")
+CLOSURE = ("SKILL.md", "agents", "modules", "quality", "references", "scripts", "tests", "fixtures")
 
 
 def _digest(path: Path) -> str:
     return "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def _files(root: Path) -> list[dict[str, str]]:
+def _files(root: Path, *, closure_only: bool = False) -> list[dict[str, str]]:
     ignored = {".git", ".pytest_cache", "__pycache__"}
-    return [{"file": path.relative_to(root).as_posix(), "digest": _digest(path)} for path in sorted(root.rglob("*")) if path.is_file() and not any(part in ignored or path.suffix == ".pyc" for part in path.relative_to(root).parts)]
+    candidates: list[Path] = []
+    for entry in CLOSURE if closure_only else (".",):
+        base = root / entry if entry != "." else root
+        if base.is_file():
+            candidates.append(base)
+        elif base.is_dir():
+            candidates.extend(base.rglob("*"))
+    rows = []
+    for path in sorted(candidates):
+        relative = path.relative_to(root)
+        if path.is_file() and not any(part in ignored or path.suffix == ".pyc" for part in relative.parts):
+            rows.append({"file_ref": "redacted:file-" + hashlib.sha256(relative.as_posix().encode()).hexdigest()[:16], "digest": _digest(path)})
+    return rows
 
 
-def package_manifest(root: Path) -> dict[str, Any]:
+def package_manifest(root: Path, *, closure_only: bool = False) -> dict[str, Any]:
     if not root.is_dir() or any(not (root / required).is_file() for required in REQUIRED_FILES):
         _fail("CLEAN_CLONE_PACKAGE", "package entrypoint or metadata is missing", "package")
-    files = _files(root)
+    files = _files(root, closure_only=closure_only)
     payload = {"identity": "ask-park", "files": files}
     canonical = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return {**payload, "manifest_digest": "sha256:" + hashlib.sha256(canonical).hexdigest()}
@@ -75,13 +88,25 @@ def install_isolated(repo_root: Path, codex_home: Path) -> dict[str, Any]:
     """Follow the README closure into an isolated CODEX_HOME."""
 
     quick_validate(repo_root, final=True)
+    if not codex_home.is_absolute() or codex_home.resolve() == repo_root.resolve() or codex_home.resolve().is_relative_to(repo_root.resolve()) or not codex_home.name.startswith("clean-clone-home-"):
+        _fail("CLEAN_CLONE_HOME_SCOPE", "clean-clone requires a new managed temporary CODEX_HOME outside the repository", "codex_home")
+    if any(path.is_symlink() for path in repo_root.rglob("*")):
+        _fail("CLEAN_CLONE_SOURCE_SYMLINK", "clean-clone refuses source symlinks", "repo_root")
     destination = codex_home / "skills" / "ask-park"
     if destination.exists():
         _fail("CLEAN_CLONE_DESTINATION", "isolated destination must be new", "destination")
     destination.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(repo_root, destination, ignore=shutil.ignore_patterns(".git", ".pytest_cache", "__pycache__", "*.pyc"))
-    installed = quick_validate(destination)["manifest"]
-    source = package_manifest(repo_root)
+    for entry in CLOSURE:
+        source = repo_root / entry
+        target = destination / entry
+        if source.is_dir():
+            shutil.copytree(source, target, symlinks=False)
+        else:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, target)
+    quick_validate(destination)
+    source = package_manifest(repo_root, closure_only=True)
+    installed = package_manifest(destination, closure_only=True)
     if source["manifest_digest"] != installed["manifest_digest"]:
         _fail("CLEAN_CLONE_MANIFEST_MISMATCH", "installed manifest differs from repository package", "manifest")
     receipt_dir = codex_home / "receipts"
@@ -95,38 +120,54 @@ def canary(installed_root: Path) -> dict[str, Any]:
     """Load router, lifecycle, every module contract, and QA seams."""
 
     quick_validate(installed_root)
-    missing_contracts = [str(installed_root / "modules" / directory / "MODULE.md") for directory in ("01-plan", "02-build", "03-cloudbase", "04-experience", "05-device", "06-release", "07-diagnose") if not (installed_root / "modules" / directory / "MODULE.md").is_file()]
+    for reference in ("references/router.md", "references/status-contract.md", "references/evidence-contract.md", "references/human-gates-contract.md", "references/transition-contract.md"):
+        if not (installed_root / reference).is_file():
+            _fail("CLEAN_CLONE_REFERENCE_CLOSURE", "installed referenced contract is missing", reference)
+    module_contracts = [installed_root / "modules" / directory / "MODULE.md" for directory in ("01-plan", "02-build", "03-cloudbase", "04-experience", "05-device", "06-release", "07-diagnose")]
+    missing_contracts = [str(path) for path in module_contracts if not path.is_file() or any(phrase not in path.read_text(encoding="utf-8") for phrase in ("Input", "Output", "Success predicate", "Failure outcomes", "Evidence", "Forbidden boundary"))]
     if missing_contracts:
         _fail("CLEAN_CLONE_MODULE_CLOSURE", "module contract is missing", "modules")
-    for script in ("router.py", "state-lifecycle.py", "qa-evaluator.py", "browser-qa.py", "devtools-qa.py", "qa-routing.py", "validate-qa-manifest.py", "validate-state.py"):
+    script_names = ("router.py", "state-lifecycle.py", "qa-evaluator.py", "browser-qa.py", "devtools-qa.py", "qa-routing.py", "validate-qa-manifest.py", "validate-state.py")
+    for script in script_names:
         path = installed_root / "scripts" / script
         if not path.is_file():
             _fail("CLEAN_CLONE_QA_CLOSURE", "router or QA script is missing", script)
-    router_path = installed_root / "scripts" / "router.py"
-    spec = importlib.util.spec_from_file_location("installed_ask_park_router", router_path)
-    if spec is None or spec.loader is None:
-        _fail("CLEAN_CLONE_ROUTER_LOAD", "installed router cannot load", "router")
-    router = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(router)
+    loaded = {}
+    for script in script_names:
+        path = installed_root / "scripts" / script
+        spec = importlib.util.spec_from_file_location("installed_ask_park_" + script.replace("-", "_").replace(".", "_"), path)
+        if spec is None or spec.loader is None:
+            _fail("CLEAN_CLONE_QA_LOAD", "installed script cannot load", script)
+        module = importlib.util.module_from_spec(spec)
+        try:
+            spec.loader.exec_module(module)
+        except Exception as exc:
+            _fail("CLEAN_CLONE_QA_LOAD", "installed script raised during load", script)
+        loaded[script] = module
+    router = loaded["router.py"]
     state_path = installed_root / "fixtures" / "state" / "valid-state.json"
     state = json.loads(state_path.read_text(encoding="utf-8"))
     decision = router.route(state, "continuation")
-    return {"router_loaded": True, "qa_paths_loaded": True, "module_contracts": 7, "canary_current_module": decision.current_module, "canary_map_size": len(decision.progress_map)}
+    return {"router_loaded": True, "qa_paths_loaded": True, "module_contracts": len(module_contracts), "canary_current_module": decision.current_module, "canary_map_size": len(decision.progress_map)}
 
 
 def missing_file_failure(installed_root: Path) -> dict[str, Any]:
-    with tempfile.TemporaryDirectory(prefix="ask-park-missing-") as directory:
-        copy_root = Path(directory) / "ask-park"
-        shutil.copytree(installed_root, copy_root)
-        (copy_root / "references" / "router.md").unlink()
-        failed = False
-        try:
-            quick_validate(copy_root)
-            if not (copy_root / "references" / "router.md").is_file():
-                raise CleanCloneError("CLEAN_CLONE_MISSING_DEPENDENCY", "missing referenced router contract", "references/router.md")
-        except CleanCloneError as exc:
-            failed = exc.code == "CLEAN_CLONE_MISSING_DEPENDENCY"
-        return {"missing_file_rejected": failed}
+    required = ["SKILL.md", "agents/openai.yaml", "references/router.md", "modules/01-plan/MODULE.md", "scripts/router.py", "scripts/devtools-qa.py", "fixtures/state/valid-state.json"]
+    rejected: list[str] = []
+    for relative in required:
+        with tempfile.TemporaryDirectory(prefix="ask-park-missing-") as directory:
+            copy_root = Path(directory) / "ask-park"
+            shutil.copytree(installed_root, copy_root)
+            target = copy_root / relative
+            if target.is_file():
+                target.unlink()
+            else:
+                shutil.rmtree(target, ignore_errors=True)
+            try:
+                canary(copy_root)
+            except Exception:
+                rejected.append(relative)
+    return {"missing_file_rejected": len(rejected) == len(required), "rejected_files": rejected}
 
 
 def main(argv: list[str] | None = None) -> int:

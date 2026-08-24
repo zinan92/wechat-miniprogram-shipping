@@ -40,6 +40,7 @@ class CleanCloneTests(unittest.TestCase):
             self.assertEqual(canary["canary_map_size"], 7)
             missing = self.clean.missing_file_failure(installed["destination"])
             self.assertTrue(missing["missing_file_rejected"])
+            self.assertEqual(len(missing["rejected_files"]), 7)
             self.assertNotIn(str(directory), json.dumps(installed["receipt"]))
 
     def test_docs_define_atomic_clean_clone_and_missing_dependency(self):

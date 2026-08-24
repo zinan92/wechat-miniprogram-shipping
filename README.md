@@ -74,7 +74,7 @@ INSTALL_ROOT="$CODEX_HOME/skills/ask-park"
 mkdir -p "$INSTALL_ROOT"
 cp -R SKILL.md agents modules quality references scripts tests fixtures "$INSTALL_ROOT/"
 
-CLEAN_CLONE_HOME="$(mktemp -d)"
+CLEAN_CLONE_HOME="$(mktemp -d -t clean-clone-home-XXXXXX)"
 python3 scripts/clean-clone.py --repo-root . --codex-home "$CLEAN_CLONE_HOME"
 ```
 
