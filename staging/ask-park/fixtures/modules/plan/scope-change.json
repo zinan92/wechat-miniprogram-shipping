@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "module": "plan",
+  "mode": "scope-change",
+  "control_outcome": "baseline-conflict",
+  "issue_ready": false,
+  "decision_needed": "Accept a superseding contract that adds a member discussion flow, or keep the accepted reader-only baseline.",
+  "outcome": {
+    "statement": "The requested discussion flow would materially change the accepted reader-only outcome.",
+    "first_useful_moment": "Unresolved until Park chooses the baseline or accepts the superseding scope."
+  },
+  "acceptance_criteria": [
+    "The requested discussion flow is separated from the accepted reader outcome.",
+    "The impact on backend, identity, experience, device, and release is recorded.",
+    "No implementation story is prepared before the superseding decision."
+  ],
+  "scope": {
+    "in": ["baseline comparison", "impact analysis", "superseding contract decision"],
+    "out": ["discussion implementation", "schema migration", "release" ]
+  },
+  "forbidden_changes": [
+    "Do not append discussion criteria to the accepted issue silently.",
+    "Do not create a new issue before the baseline decision.",
+    "Do not change current module receipts as a substitute for a contract decision."
+  ],
+  "complexity": {
+    "label": "M",
+    "rationale": "The choice is a material acceptance-boundary change, not a code task.",
+    "test_depth": "upstream-downstream"
+  },
+  "applicability": {
+    "plan": "required",
+    "build": "required",
+    "cloudbase": "required",
+    "experience": "required",
+    "device": "required",
+    "release": "required"
+  },
+  "risk_map": [
+    {"category": "intent", "status": "blocked", "impact": "The first useful moment differs between two accepted outcomes.", "mitigation": "Park chooses the baseline or signs a superseding contract."},
+    {"category": "identity", "status": "known", "impact": "The existing project identity remains bound to the reader baseline.", "mitigation": "Preserve the baseline receipt chain until a superseding contract exists."},
+    {"category": "backend", "status": "unknown", "impact": "Discussion may require new authorization and persistence.", "mitigation": "Record a bounded backend impact investigation after the decision."},
+    {"category": "experience", "status": "unknown", "impact": "New interaction changes the accepted experience surface.", "mitigation": "Define new experience criteria only in the superseding contract."},
+    {"category": "device", "status": "unknown", "impact": "New interaction needs device coverage.", "mitigation": "Add device acceptance scope after the baseline decision."},
+    {"category": "release", "status": "unknown", "impact": "The release target may change.", "mitigation": "Re-plan release applicability after contract acceptance."},
+    {"category": "migration", "status": "unknown", "impact": "Existing reader identities may need a compatibility path.", "mitigation": "Keep migration as a separate issue after the superseding decision."}
+  ],
+  "solution_search": [
+    {"kind": "product", "query": "discussion flow comparable to the requested change", "finding": "Comparable products add moderation and identity contracts.", "decision": "investigate", "evidence_ref": "redacted:discussion-comparison"}
+  ],
+  "ordered_work": [],
+  "issue_contract": {
+    "immutable": false,
+    "version": 1,
+    "contract_id": "plan-baseline-conflict-v1"
+  },
+  "issue_actions": [],
+  "source_evidence": ["redacted:accepted-reader-baseline", "redacted:scope-change-request"],
+  "superseding_contract_required": true
+}
