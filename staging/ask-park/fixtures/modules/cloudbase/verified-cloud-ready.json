@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "module": "cloudbase",
+  "status": "verified-cloud",
+  "issue_contract_id": "reader-vertical-slice",
+  "build_receipt_id": "build-r1",
+  "provider_role": "cloudbase",
+  "target_alias": "reader-cloud-prod",
+  "redacted_target_ref": "redacted:cloud-target",
+  "artifact": {"alias": "reader-functions-r1", "digest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"},
+  "production_package": {"alias": "reader-production-package", "digest": "sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789" , "clean": true, "nested_dev_dependencies": false},
+  "readiness_checks": {"collections": "pass", "indexes": "pass", "rules": "pass", "runtime": "pass", "config": "pass"},
+  "evidence_layers": {"function_upload": "pass", "health_readback": "pass", "projection_readback": "pass", "hosting_readback": "pass", "client_evidence": "not-applicable"},
+  "protected_storage": {"access": "closed", "short_lived_assets": "aliases-only"},
+  "fallback_public_storage": false,
+  "unproven_claims": ["Experience, Device Acceptance, and formal Release remain unproven."],
+  "receipt": {"receipt_id": "cloudbase-r1", "module": "cloudbase", "status": "valid", "predecessor_receipt_ids": ["build-r1"]},
+  "routing": "continue"
+}

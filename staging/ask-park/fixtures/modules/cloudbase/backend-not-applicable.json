@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "module": "cloudbase",
+  "status": "not-applicable",
+  "issue_contract_id": "static-reader-v1",
+  "build_receipt_id": "build-static-r1",
+  "provider_role": "serverless-backend",
+  "target_alias": "no-backend-target",
+  "redacted_target_ref": "redacted:no-backend",
+  "artifact": {"alias": "static-reader-artifact", "digest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"},
+  "production_package": {"alias": "static-reader-package", "digest": "sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789", "clean": true, "nested_dev_dependencies": false},
+  "readiness_checks": {"collections": "not-applicable", "indexes": "not-applicable", "rules": "not-applicable", "runtime": "not-applicable", "config": "not-applicable"},
+  "evidence_layers": {"function_upload": "not-applicable", "health_readback": "not-applicable", "projection_readback": "not-applicable", "hosting_readback": "not-applicable", "client_evidence": "not-applicable"},
+  "protected_storage": {"access": "closed", "short_lived_assets": "not-applicable"},
+  "fallback_public_storage": false,
+  "not_applicable_reason": "The approved static-reader target has no backend role.",
+  "impact_analysis": "No protected member data or backend mutation is in the accepted target.",
+  "unproven_claims": ["Backend health is not a claim for this target; Experience and Release remain separate."],
+  "receipt": {"receipt_id": "cloudbase-na-r1", "module": "cloudbase", "status": "not-applicable", "predecessor_receipt_ids": ["build-static-r1"]},
+  "routing": "continue"
+}

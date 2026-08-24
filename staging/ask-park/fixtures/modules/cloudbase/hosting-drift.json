@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "module": "cloudbase",
+  "status": "failed",
+  "issue_contract_id": "admin-reader-v1",
+  "build_receipt_id": "build-admin-r1",
+  "provider_role": "cloudbase",
+  "target_alias": "admin-hosting-target",
+  "redacted_target_ref": "redacted:hosting-drift",
+  "artifact": {"alias": "admin-functions-r1", "digest": "sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"},
+  "production_package": {"alias": "admin-production-package", "digest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", "clean": true, "nested_dev_dependencies": false},
+  "readiness_checks": {"collections": "pass", "indexes": "pass", "rules": "pass", "runtime": "pass", "config": "pass"},
+  "evidence_layers": {"function_upload": "pass", "health_readback": "pass", "projection_readback": "pass", "hosting_readback": "fail", "client_evidence": "not-applicable"},
+  "protected_storage": {"access": "closed", "short_lived_assets": "aliases-only"},
+  "fallback_public_storage": false,
+  "unproven_claims": ["Hosting bundle identity and deep links are not proven for the intended build."],
+  "receipt": {"receipt_id": "cloudbase-hosting-failed-r1", "module": "cloudbase", "status": "invalid", "predecessor_receipt_ids": ["build-admin-r1"]},
+  "routing": "diagnose"
+}

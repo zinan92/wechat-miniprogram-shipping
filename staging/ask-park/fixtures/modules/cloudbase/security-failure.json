@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "module": "cloudbase",
+  "status": "failed",
+  "issue_contract_id": "reader-vertical-slice",
+  "build_receipt_id": "build-r1",
+  "provider_role": "cloudbase",
+  "target_alias": "reader-cloud-candidate",
+  "redacted_target_ref": "redacted:cloud-security-failure",
+  "artifact": {"alias": "reader-functions-r1", "digest": "sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"},
+  "production_package": {"alias": "reader-production-package", "digest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", "clean": true, "nested_dev_dependencies": false},
+  "readiness_checks": {"collections": "pass", "indexes": "pass", "rules": "fail", "runtime": "pass", "config": "pass"},
+  "evidence_layers": {"function_upload": "pass", "health_readback": "fail", "projection_readback": "fail", "hosting_readback": "not-applicable", "client_evidence": "not-applicable"},
+  "protected_storage": {"access": "closed", "short_lived_assets": "not-applicable"},
+  "fallback_public_storage": false,
+  "unproven_claims": ["No protected content is served until rules are repaired."],
+  "receipt": {"receipt_id": "cloudbase-failed-r1", "module": "cloudbase", "status": "invalid", "predecessor_receipt_ids": ["build-r1"]},
+  "routing": "diagnose"
+}
