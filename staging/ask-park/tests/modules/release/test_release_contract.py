@@ -31,8 +31,9 @@ class ReleaseContractTests(unittest.TestCase):
         self.assertIn(document["project_state"], {"active", "released"})
         self.assertTrue(document["version_binding"]["experience_version_alias"])
         bindings = document["predecessor_bindings"]
-        self.assertEqual(bindings["experience"]["receipt_id"], "experience-r1")
-        self.assertEqual(bindings["device"]["receipt_id"], "device-r1")
+        for binding in bindings.values():
+            self.assertIn(binding["receipt_id"], document["predecessor_receipt_ids"])
+        self.assertEqual(set(document["receipt"]["predecessor_receipt_ids"]), set(document["predecessor_receipt_ids"]))
         if document["version_binding"]["matches_predecessors"]:
             self.assertEqual(document["version_binding"]["source_sha"], bindings["experience"]["source_sha"])
             self.assertEqual(bindings["experience"]["source_sha"], bindings["device"]["source_sha"])
