@@ -46,7 +46,9 @@ HUMAN_GATE_STATES = (
 )
 
 SHA_RE = re.compile(r"^(?:sha256:)?[0-9a-f]{7,64}$")
+SHA256_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
 ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
+REDACTED_REF_RE = re.compile(r"^redacted:[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 ISO_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$")
 
 # These fields would turn a persisted record into a credential or a complete
@@ -154,6 +156,29 @@ SAFE_PATH_KEYS = {
     FORBIDDEN_NEXT_MODULE,
 }
 
+STATE_KEYS = {
+    "schema_version", "contract_version", "project_id", "project_state", "project_terminal_state",
+    "current_module", "control_outcome", "modules", "diagnose", "human_gate", "rewind",
+}
+MODULE_KEYS = {"applicability", "activity_state", "evidence_state", "receipt_id", "not_applicable_reason"}
+DIAGNOSE_KEYS = {"state", "outcome", "interrupted_module", "recovery_goal"}
+REWIND_KEYS = {"active", "earliest_invalidated_module", "reason_code", "invalidated_receipt_ids"}
+HUMAN_GATE_KEYS = {
+    "state", "action_type", "action_scope", "authorizing_role", "requested_at", "authorized_at", "evidence_ref", "authority_basis",
+}
+STANDALONE_HUMAN_GATE_KEYS = HUMAN_GATE_KEYS | {"gate_id", "schema_version", "contract_version", "action_type"}
+RECEIPT_KEYS = {
+    "receipt_id", "receipt_type", "schema_version", "contract_version", "module", "status", "applicability",
+    "not_applicable_reason", "stale_reason", "invalid_reason", "source", "issue", "predecessor_receipt_ids",
+    "artifact", "package", "target", "invalidation_rules", "issued_at", "evidence_refs",
+}
+SOURCE_KEYS = {"repository_alias", "commit_sha"}
+ISSUE_KEYS = {"id"}
+COMPONENT_KEYS = {"kind", "alias", "digest", "state", "reason"}
+TARGET_KEYS = {"alias", "environment_contract_alias", "redacted_ref", "state", "reason"}
+INVALIDATION_KEYS = {"on", "downstream_modules", "causal_rewind", "declared_by"}
+CAUSAL_REWIND_KEYS = {"earliest_invalidated_module", "reason_code", "invalidated_receipt_ids"}
+
 
 class ValidationError:
     __slots__ = ("code", "path", "message")
@@ -216,8 +241,20 @@ def _is_digest(value: Any) -> bool:
     return isinstance(value, str) and bool(SHA_RE.fullmatch(value))
 
 
+def _is_sha256_digest(value: Any) -> bool:
+    return isinstance(value, str) and bool(SHA256_RE.fullmatch(value))
+
+
 def _is_redacted_ref(value: Any) -> bool:
-    return isinstance(value, str) and value.startswith("redacted:") and len(value) > len("redacted:")
+    return isinstance(value, str) and bool(REDACTED_REF_RE.fullmatch(value))
+
+
+def _reject_unknown(document: Any, allowed: set[str], prefix: str, errors: _Collector) -> None:
+    if not isinstance(document, dict):
+        return
+    for key in document:
+        if key not in allowed:
+            errors.add("UNKNOWN_FIELD", f"{prefix}.{key}" if prefix else key, "field is not in the contract schema")
 
 
 def _walk_persistence_boundary(value: Any, path: str, errors: _Collector) -> None:
@@ -277,6 +314,7 @@ def _validate_human_gate_fields(document: Any, prefix: str, errors: _Collector, 
     if not _is_mapping(document):
         errors.add("HUMAN_GATE_TYPE", prefix, "human gate must be an object")
         return
+    _reject_unknown(document, STANDALONE_HUMAN_GATE_KEYS if standalone else HUMAN_GATE_KEYS, prefix, errors)
     if standalone:
         _check_schema_version(document, prefix, errors)
         _check_contract_version(document, HUMAN_GATE_CONTRACT_VERSION, prefix, errors)
@@ -308,7 +346,7 @@ def _validate_human_gate_fields(document: Any, prefix: str, errors: _Collector, 
                 errors.add("HUMAN_GATE_NOT_NEEDED", f"{prefix}.{key}", "not-needed gates cannot carry authorization data")
         return
 
-    for key, value in (("action_scope", scope), ("authorizing_role", role)):
+    for key, value in (("action_type", document.get("action_type")), ("action_scope", scope), ("authorizing_role", role)):
         if not _is_nonempty_string(value):
             errors.add("HUMAN_GATE_REQUIRED_FIELD", f"{prefix}.{key}", "active gate requires this field")
     if not _is_iso(requested_at):
@@ -333,6 +371,7 @@ def validate_state(document: Any) -> ValidationResult:
         return ValidationResult("state", {}, tuple(errors.errors))
 
     _walk_persistence_boundary(document, "", errors)
+    _reject_unknown(document, STATE_KEYS, "state", errors)
     errors.required(
         document,
         (
@@ -392,6 +431,7 @@ def validate_state(document: Any) -> ValidationResult:
         if not _is_mapping(record):
             errors.add("STATE_MODULE_TYPE", prefix, "module axis must be an object")
             continue
+        _reject_unknown(record, MODULE_KEYS, prefix, errors)
         errors.required(record, ("applicability", "activity_state", "evidence_state", "receipt_id"), prefix, "STATE_REQUIRED_FIELD")
         _check_enum(record, "applicability", APPLICABILITY, prefix, errors)
         _check_enum(record, "activity_state", ACTIVITY_STATES, prefix, errors)
@@ -435,6 +475,7 @@ def validate_state(document: Any) -> ValidationResult:
     if not _is_mapping(rewind):
         errors.add("STATE_REWIND", "state.rewind", "rewind must be an object")
     else:
+        _reject_unknown(rewind, REWIND_KEYS, "state.rewind", errors)
         errors.required(rewind, ("active", "earliest_invalidated_module", "reason_code", "invalidated_receipt_ids"), "state.rewind", "STATE_REQUIRED_FIELD")
         if not isinstance(rewind.get("active"), bool):
             errors.add("STATE_REWIND", "state.rewind.active", "active must be boolean")
@@ -460,6 +501,7 @@ def validate_state(document: Any) -> ValidationResult:
     if not _is_mapping(diagnose):
         errors.add("DIAGNOSE_TYPE", "state.diagnose", "diagnose must be an object")
     else:
+        _reject_unknown(diagnose, DIAGNOSE_KEYS, "state.diagnose", errors)
         errors.required(diagnose, ("state", "outcome", "interrupted_module", "recovery_goal"), "state.diagnose", "STATE_REQUIRED_FIELD")
         _check_enum(diagnose, "state", DIAGNOSE_STATES, "state.diagnose", errors, "DIAGNOSE_STATE")
         _check_enum(diagnose, "outcome", DIAGNOSE_OUTCOMES, "state.diagnose", errors, "DIAGNOSE_OUTCOME")
@@ -489,6 +531,7 @@ def _validate_receipt_component(document: dict[str, Any], key: str, prefix: str,
     if not _is_mapping(value):
         errors.add("RECEIPT_TYPE", f"{prefix}.{key}", "component must be an object")
         return
+    _reject_unknown(value, COMPONENT_KEYS, f"{prefix}.{key}", errors)
     if not_applicable:
         if value.get("state") != "not-applicable" or not _is_nonempty_string(value.get("reason")):
             errors.add("RECEIPT_NOT_APPLICABLE", f"{prefix}.{key}", "not-applicable component requires state and reason")
@@ -496,7 +539,7 @@ def _validate_receipt_component(document: dict[str, Any], key: str, prefix: str,
     errors.required(value, ("kind", "alias", "digest"), f"{prefix}.{key}", "RECEIPT_REQUIRED_FIELD")
     if not _is_nonempty_string(value.get("kind")) or not _safe_identifier(value.get("alias")):
         errors.add("RECEIPT_COMPONENT", f"{prefix}.{key}", "component kind and alias must be stable")
-    if not _is_digest(value.get("digest")):
+    if not _is_sha256_digest(value.get("digest")):
         errors.add("RECEIPT_DIGEST", f"{prefix}.{key}.digest", "component digest must be a SHA-256 identity")
 
 
@@ -506,6 +549,7 @@ def validate_receipt(document: Any) -> ValidationResult:
         errors.add("RECEIPT_TYPE", "receipt", "receipt must be a JSON object")
         return ValidationResult("receipt", {}, tuple(errors.errors))
     _walk_persistence_boundary(document, "", errors)
+    _reject_unknown(document, RECEIPT_KEYS, "receipt", errors)
     errors.required(
         document,
         (
@@ -555,6 +599,7 @@ def validate_receipt(document: Any) -> ValidationResult:
     if not _is_mapping(source):
         errors.add("RECEIPT_SOURCE", "receipt.source", "source must be an object")
     else:
+        _reject_unknown(source, SOURCE_KEYS, "receipt.source", errors)
         errors.required(source, ("repository_alias", "commit_sha"), "receipt.source", "RECEIPT_REQUIRED_FIELD")
         if not _safe_identifier(source.get("repository_alias")):
             errors.add("RECEIPT_SOURCE", "receipt.source.repository_alias", "repository_alias must be a stable alias")
@@ -563,8 +608,10 @@ def validate_receipt(document: Any) -> ValidationResult:
     issue = document.get("issue")
     if not _is_mapping(issue):
         errors.add("RECEIPT_ISSUE", "receipt.issue", "issue must be an object")
-    elif not _safe_identifier(str(issue.get("id", ""))):
-        errors.add("RECEIPT_ISSUE", "receipt.issue.id", "issue id must be a stable alias")
+    else:
+        _reject_unknown(issue, ISSUE_KEYS, "receipt.issue", errors)
+        if not _safe_identifier(str(issue.get("id", ""))):
+            errors.add("RECEIPT_ISSUE", "receipt.issue.id", "issue id must be a stable alias")
     predecessors = document.get("predecessor_receipt_ids")
     if not isinstance(predecessors, list) or any(not _safe_identifier(item) for item in predecessors):
         errors.add("RECEIPT_PREDECESSORS", "receipt.predecessor_receipt_ids", "predecessors must be stable receipt aliases")
@@ -577,9 +624,11 @@ def validate_receipt(document: Any) -> ValidationResult:
     if not _is_mapping(target):
         errors.add("RECEIPT_TARGET", "receipt.target", "target must be an object")
     elif not_applicable:
+        _reject_unknown(target, TARGET_KEYS, "receipt.target", errors)
         if target.get("state") != "not-applicable" or not _safe_identifier(target.get("alias")) or not _is_redacted_ref(target.get("redacted_ref")):
             errors.add("RECEIPT_TARGET", "receipt.target", "not-applicable target requires alias and redacted_ref")
     else:
+        _reject_unknown(target, TARGET_KEYS, "receipt.target", errors)
         errors.required(target, ("alias", "environment_contract_alias", "redacted_ref"), "receipt.target", "RECEIPT_REQUIRED_FIELD")
         if not _safe_identifier(target.get("alias")) or not _safe_identifier(target.get("environment_contract_alias")):
             errors.add("RECEIPT_TARGET", "receipt.target", "target aliases must be stable")
@@ -590,6 +639,7 @@ def validate_receipt(document: Any) -> ValidationResult:
     if not _is_mapping(invalidation):
         errors.add("RECEIPT_INVALIDATION", "receipt.invalidation_rules", "invalidation_rules must be an object")
     else:
+        _reject_unknown(invalidation, INVALIDATION_KEYS, "receipt.invalidation_rules", errors)
         errors.required(invalidation, ("on", "downstream_modules", "causal_rewind", "declared_by"), "receipt.invalidation_rules", "RECEIPT_REQUIRED_FIELD")
         on = invalidation.get("on")
         if not isinstance(on, list) or not on or any(not _is_nonempty_string(item) for item in on):
@@ -603,6 +653,7 @@ def validate_receipt(document: Any) -> ValidationResult:
         if not isinstance(rewind, (bool, dict)):
             errors.add("RECEIPT_INVALIDATION", "receipt.invalidation_rules.causal_rewind", "causal_rewind must be boolean or an object")
         elif isinstance(rewind, dict):
+            _reject_unknown(rewind, CAUSAL_REWIND_KEYS, "receipt.invalidation_rules.causal_rewind", errors)
             errors.required(rewind, ("earliest_invalidated_module", "reason_code", "invalidated_receipt_ids"), "receipt.invalidation_rules.causal_rewind", "RECEIPT_REQUIRED_FIELD")
             if rewind.get("earliest_invalidated_module") not in MODULES:
                 errors.add("RECEIPT_INVALIDATION", "receipt.invalidation_rules.causal_rewind.earliest_invalidated_module", "rewind module must be sequential module")

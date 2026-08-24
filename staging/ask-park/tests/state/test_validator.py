@@ -140,6 +140,38 @@ class ReceiptContractTests(unittest.TestCase):
         self.assertIn("PRIVATE_TARGET", codes)
         self.assertIn("SENSITIVE_FIELD", codes)
 
+    def test_unknown_and_camel_case_sensitive_fields_are_rejected(self):
+        state = self.fixture("valid-state.json")
+        state["apiKey"] = "fixture-value"
+        state["environmentId"] = "fixture-value"
+        result = self.validator.validate_document(state)
+
+        self.assertFalse(result.valid)
+        self.assertIn("UNKNOWN_FIELD", {error.code for error in result.errors})
+
+        receipt = self.fixture("valid-receipt.json")
+        receipt["target"]["privateKey"] = "fixture-value"
+        result = self.validator.validate_document(receipt)
+        self.assertFalse(result.valid)
+        self.assertIn("UNKNOWN_FIELD", {error.code for error in result.errors})
+
+    def test_redacted_ref_must_be_an_alias_not_a_hidden_url_or_path(self):
+        receipt = self.fixture("valid-receipt.json")
+        for value in ("redacted:https://private.example.invalid/env", "redacted:/Users/wendy/private"):
+            receipt["target"]["redacted_ref"] = value
+            result = self.validator.validate_document(receipt)
+            self.assertFalse(result.valid)
+            self.assertIn("RECEIPT_TARGET", {error.code for error in result.errors})
+
+    def test_artifact_and_package_digests_require_full_sha256(self):
+        receipt = self.fixture("valid-receipt.json")
+        receipt["artifact"]["digest"] = "sha256:deadbee"
+        receipt["package"]["digest"] = "sha256:deadbee"
+        result = self.validator.validate_document(receipt)
+
+        self.assertFalse(result.valid)
+        self.assertIn("RECEIPT_DIGEST", {error.code for error in result.errors})
+
     def test_s01_does_not_accept_s10_qa_manifest_or_result_records(self):
         receipt = self.fixture("valid-receipt.json")
         receipt["candidate_manifest"] = {"digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}
@@ -170,6 +202,22 @@ class HumanGateContractTests(unittest.TestCase):
 
         self.assertFalse(result.valid)
         self.assertIn("HUMAN_GATE_AUTHORITY", {error.code for error in result.errors})
+
+    def test_embedded_active_gate_requires_action_type(self):
+        state = self.fixture("valid-state.json")
+        state["human_gate"] = {
+            "state": "awaiting-human",
+            "action_scope": "experience-upload",
+            "authorizing_role": "owner",
+            "requested_at": "2026-08-24T10:00:00Z",
+            "authorized_at": None,
+            "evidence_ref": "redacted:gate",
+        }
+
+        result = self.validator.validate_document(state)
+
+        self.assertFalse(result.valid)
+        self.assertIn("HUMAN_GATE_REQUIRED_FIELD", {error.code for error in result.errors})
 
 
 class ValidatorCliTests(unittest.TestCase):
