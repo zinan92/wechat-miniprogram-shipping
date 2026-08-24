@@ -20,12 +20,13 @@
 - S08/#21 is complete in PR #56 (`665b120`): Device Acceptance role/device/task matrix, exact Experience-version binding, projection/HTTP/pixels/expiry evidence ladder, weak-network/retry checks, client-only log attribution, smallest physical human gate, protected-content failure, and S01-valid device receipts; 6/6 Device tests plus 6/6 Experience, 6/6 CloudBase, 5/5 Build, 5/5 Diagnose, 6/6 Plan, 9/9 router, 30/30 lifecycle, 22/22 state, and 9/9 package tests passed. Staged validation, `py_compile`, diff-check, gitleaks, and both independent spec/standards reviews passed.
 - S09/#22 is complete in PR #58 (`b726460`): Release payment applicability/provider truth, distinct review/release read-back/smoke gates, complete S01 human-gate records, predecessor version causality, terminal `project_state=released`, payment N/A, human-blocked, and mismatch fixtures; 6/6 Release tests plus 6/6 Device, 6/6 Experience, 6/6 CloudBase, 5/5 Build, 5/5 Diagnose, 6/6 Plan, 9/9 router, 30/30 lifecycle, 22/22 state, and 9/9 package tests passed. Staged validation, `py_compile`, diff-check, gitleaks, and both independent spec/standards reviews passed.
 - S10/#23 is complete in PR #60 (`ae5190c`): QA state/result/candidate/target/evidence matrix schemas, deterministic integer-profile JCS-compatible digests, candidate-before-target binding, privacy/evidence modes, approved-store governance, identity invalidation, and QA_FAIL restore controls; 11/11 QA tests plus 6/6 Release, 6/6 Device, 6/6 Experience, 6/6 CloudBase, 5/5 Build, 5/5 Diagnose, 6/6 Plan, 9/9 router, 30/30 lifecycle, 22/22 state, and 9/9 package tests passed. Staged validation, `py_compile`, diff-check, gitleaks, and both independent spec/standards reviews passed.
-- S11/#24 is the next story to implement. QA evaluator/workflows, migration, and forward evaluations remain unimplemented.
+- S11/#24 is complete in PR #62 (`54d658c`): independent fresh-context/read-only evaluator packet, worker/evaluator and candidate/worktree provenance, PASS/FAIL/BLOCKED policy, prerequisite-missing, bounded same-contract repair, non-contract identity reset, stale-packet clearing, and attempt-three escalation; 10/10 evaluator tests plus 11/11 QA, 6/6 Release, 6/6 Device, 6/6 Experience, 6/6 CloudBase, 5/5 Build, 5/5 Diagnose, 6/6 Plan, 9/9 router, 30/30 lifecycle, 22/22 state, and 9/9 package tests passed. Staged validation, `py_compile`, diff-check, gitleaks, and both independent spec/standards reviews passed.
+- S12/#25 is the next story to implement. Browser/DevTools QA, migration, and forward evaluations remain unimplemented.
 
 ## 下一步
 
-1. Implement [#24 / S11](https://github.com/zinan92/wechat-miniprogram-shipping/issues/24): independent evaluator and three-attempt defect loop.
-2. Merge S11 after its gates pass, update this Registry, then make the next dependency-ready story ready from the new `main`.
+1. Implement [#25 / S12](https://github.com/zinan92/wechat-miniprogram-shipping/issues/25): Browser Web QA workflows.
+2. Merge S12 after its gates pass, update this Registry, then make the next dependency-ready story ready from the new `main`.
 3. Preserve hard WIP=1 and the published dependency order through #33/S16D.
 
 ## Evidence
@@ -48,4 +49,5 @@
 - [PR #56](https://github.com/zinan92/wechat-miniprogram-shipping/pull/56)
 - [PR #58](https://github.com/zinan92/wechat-miniprogram-shipping/pull/58)
 - [PR #60](https://github.com/zinan92/wechat-miniprogram-shipping/pull/60)
+- [PR #62](https://github.com/zinan92/wechat-miniprogram-shipping/pull/62)
 - [Implementation Dev Queue](https://github.com/zinan92/wechat-miniprogram-shipping/issues?q=is%3Aissue%20state%3Aopen%20label%3Aenhancement)
