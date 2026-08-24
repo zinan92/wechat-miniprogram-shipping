@@ -7,9 +7,9 @@ import unittest
 from pathlib import Path
 
 
-REPO_ROOT = Path(__file__).resolve().parents[4]
-VALIDATOR = REPO_ROOT / "staging" / "ask-park" / "scripts" / "validate-state.py"
-FIXTURES = REPO_ROOT / "staging" / "ask-park" / "fixtures" / "state"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+VALIDATOR = REPO_ROOT / "scripts" / "validate-state.py"
+FIXTURES = REPO_ROOT / "fixtures" / "state"
 
 
 def load_validator():

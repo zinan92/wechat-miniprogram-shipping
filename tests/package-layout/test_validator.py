@@ -9,7 +9,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 VALIDATOR = REPO_ROOT / "tools" / "validate-package-layout.py"
-STAGED_TEMPLATE = REPO_ROOT / "staging" / "ask-park"
+STAGED_TEMPLATE = REPO_ROOT
 
 
 class PackageLayoutValidatorTests(unittest.TestCase):
@@ -104,7 +104,7 @@ class PackageLayoutValidatorTests(unittest.TestCase):
 
 class FixtureHarnessTests(unittest.TestCase):
     def test_record_replay_reads_fixture_without_external_side_effects(self):
-        harness_path = REPO_ROOT / "staging" / "ask-park" / "tests" / "fixture_harness.py"
+        harness_path = REPO_ROOT / "tests" / "fixture_harness.py"
         spec = __import__("importlib.util").util.spec_from_file_location("fixture_harness", harness_path)
         module = __import__("importlib.util").util.module_from_spec(spec)
         spec.loader.exec_module(module)
@@ -115,7 +115,7 @@ class FixtureHarnessTests(unittest.TestCase):
         module.assert_no_external_side_effects(adapter.events)
 
     def test_fixture_harness_rejects_network_or_mutation_events(self):
-        harness_path = REPO_ROOT / "staging" / "ask-park" / "tests" / "fixture_harness.py"
+        harness_path = REPO_ROOT / "tests" / "fixture_harness.py"
         spec = __import__("importlib.util").util.spec_from_file_location("fixture_harness", harness_path)
         module = __import__("importlib.util").util.module_from_spec(spec)
         spec.loader.exec_module(module)

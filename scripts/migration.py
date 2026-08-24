@@ -19,9 +19,10 @@ from pathlib import Path
 from typing import Any, Mapping
 
 
-ROOT = Path(__file__).resolve().parents[3]
+PACKAGE_ROOT = Path(__file__).resolve().parents[1]
+ROOT = PACKAGE_ROOT.parent.parent if PACKAGE_ROOT.name == "ask-park" and PACKAGE_ROOT.parent.name == "staging" else PACKAGE_ROOT
 LAYOUT = ROOT / "tools" / "validate-package-layout.py"
-QA_SCHEMA = ROOT / "staging" / "ask-park" / "scripts" / "validate-qa-manifest.py"
+QA_SCHEMA = PACKAGE_ROOT / "scripts" / "validate-qa-manifest.py"
 ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 SHA_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
 PRIVATE_MARKERS = ("secret", "token", "password", "openid", "credential", "private_key", "api_key", "cookie", "appid", "environment_id")

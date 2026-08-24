@@ -1,4 +1,0 @@
-interface:
-  display_name: "Ask Park"
-  short_description: "Route Mini Program shipping through evidence-gated modules"
-  default_prompt: "Use $ask-park to route this Mini Program task through the correct shipping module and QA gate."
