@@ -46,6 +46,8 @@
   ],
   "bounded_next_action": "Ask Park rewinds to Build and revalidates the causal receipt chain before Experience.",
   "human_gate_required": false,
+  "human_gate_ref": null,
+  "human_gate_summary": null,
   "unproven_claims": ["Device Acceptance and formal Release remain unproven."],
   "load_contracts": [
     "references/status-contract.md",

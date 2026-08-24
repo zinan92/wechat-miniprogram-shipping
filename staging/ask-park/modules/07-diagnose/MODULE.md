@@ -17,7 +17,9 @@ rewind to the earliest confirmed invalidated prerequisite.
 - the user's authorization boundary and any human/platform gate.
 
 Read shared state/evidence/human-gate/transition contracts, Diagnose, and
-exactly the interrupted module. Do not load every module to speculate.
+exactly the interrupted module. At S04, future module paths are planned
+disclosure targets until their stories land; do not claim they were loaded or
+load every module to speculate.
 
 ## Output
 
@@ -32,8 +34,8 @@ Produce an incident record conforming to
 - `recovered`, `unresolved`, or `blocked-external` outcome;
 - preserved recovery goal, post-recovery current module, evidence, unproven
   claims, and the next bounded action;
-- named human gate when identity, permission, device, payment, review, or
-  platform action is required.
+- named human gate reference and redacted action summary when identity,
+  permission, device, payment, review, or platform action is required.
 
 ## Success predicate
 

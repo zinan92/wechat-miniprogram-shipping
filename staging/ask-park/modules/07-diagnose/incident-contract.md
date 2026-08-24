@@ -42,6 +42,8 @@ attempts:
     result: observed result
 bounded_next_action: one next step
 human_gate_required: true | false
+human_gate_ref: redacted alias or null
+human_gate_summary: null | {state, action_type, action_scope, authorizing_role, evidence_ref}
 unproven_claims: [explicit limitations]
 load_contracts: [shared contracts, Diagnose, interrupted module]
 ```
@@ -74,9 +76,10 @@ even a recovered incident states what the evidence does not prove.
 
 ## Loading and privacy
 
-`load_contracts` starts with the shared status and evidence contracts, then
-includes the human-gate and transition contracts, Diagnose, and exactly the
-interrupted module. It does not claim that unrelated module contracts were
-loaded. All source/target references are aliases or `redacted:` values; no
-credentials, complete URLs, environment IDs, QR contents, or private data are
-persisted.
+`load_contracts` records the shared status and evidence contracts, then the
+human-gate and transition contracts, Diagnose, and exactly the interrupted
+module. In S04, module paths for S05–S09 are planned/unavailable disclosure
+targets until their stories land; a path in this record does not claim that an
+unimplemented module was loaded. All source/target references are aliases or
+`redacted:` values; no credentials, complete URLs, environment IDs, QR
+contents, or private data are persisted.

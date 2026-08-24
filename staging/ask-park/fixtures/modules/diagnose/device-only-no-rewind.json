@@ -46,6 +46,14 @@
   ],
   "bounded_next_action": "Park authorizes the smallest device read-back gate; no retry or source rewrite is inferred.",
   "human_gate_required": true,
+  "human_gate_ref": "redacted:device-acceptance-gate",
+  "human_gate_summary": {
+    "state": "awaiting-human",
+    "action_type": "physical-device-acceptance",
+    "action_scope": "device-v1",
+    "authorizing_role": "owner",
+    "evidence_ref": "redacted:device-gate"
+  },
   "unproven_claims": ["Physical-device behavior and formal release remain unproven."],
   "load_contracts": [
     "references/status-contract.md",

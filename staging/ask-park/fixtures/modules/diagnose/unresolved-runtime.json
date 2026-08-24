@@ -58,6 +58,8 @@
   ],
   "bounded_next_action": "Choose one timeout or identity hypothesis for a read-only reproduction before attempt three.",
   "human_gate_required": false,
+  "human_gate_ref": null,
+  "human_gate_summary": null,
   "unproven_claims": ["The source, package, network, and target runtime are not yet causally reconciled."],
   "load_contracts": [
     "references/status-contract.md",

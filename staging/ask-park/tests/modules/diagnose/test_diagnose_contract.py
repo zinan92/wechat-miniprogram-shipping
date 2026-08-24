@@ -32,7 +32,12 @@ class DiagnoseContractTests(unittest.TestCase):
         self.assertTrue(document["symptom"]["statement"].strip())
         self.assertIn(document["failure_class"], FAILURE_CLASSES)
         self.assertTrue(document["recovery_goal"].strip())
+        self.assertEqual(document["symptom"]["source_ref"][:9], "redacted:")
         self.assertTrue(document["observed_facts"])
+        for fact in document["observed_facts"]:
+            self.assertTrue(fact["evidence_ref"].startswith("redacted:"))
+            self.assertTrue(fact["proves"].strip())
+            self.assertTrue(fact["cannot_prove"].strip())
         self.assertTrue(document["hypotheses"])
         for hypothesis in document["hypotheses"]:
             self.assertTrue(hypothesis["id"])
@@ -47,6 +52,9 @@ class DiagnoseContractTests(unittest.TestCase):
             self.assertTrue(proposal["invalidated_receipt_ids"])
             self.assertTrue(proposal["changed_fields"])
             self.assertTrue(proposal["reason_code"])
+            self.assertRegex(proposal["reason_code"], r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
+            self.assertTrue(all("/" not in field and "https:" not in field for field in proposal["changed_fields"]))
+            self.assertTrue(all("/" not in receipt_id for receipt_id in proposal["invalidated_receipt_ids"]))
         else:
             self.assertIsNone(proposal["earliest_module"])
             self.assertEqual(proposal["invalidated_receipt_ids"], [])
@@ -59,6 +67,26 @@ class DiagnoseContractTests(unittest.TestCase):
             self.assertEqual(document["diagnose_state"], "active")
         self.assertTrue(document["unproven_claims"])
         self.assertTrue(document["bounded_next_action"])
+        attempts = document["attempts"]
+        numbers = [attempt["attempt"] for attempt in attempts]
+        self.assertEqual(numbers, list(range(1, len(numbers) + 1)))
+        for attempt in attempts:
+            self.assertIsInstance(attempt["attempt"], int)
+            self.assertTrue(attempt["action"].strip())
+            self.assertTrue(attempt["result"].strip())
+        if document["human_gate_required"]:
+            self.assertTrue(document["human_gate_ref"].startswith("redacted:"))
+            summary = document["human_gate_summary"]
+            for field in ("state", "action_type", "action_scope", "authorizing_role", "evidence_ref"):
+                self.assertTrue(summary[field])
+            self.assertTrue(summary["evidence_ref"].startswith("redacted:"))
+        else:
+            self.assertIsNone(document["human_gate_ref"])
+            self.assertIsNone(document["human_gate_summary"])
+        for path in document["load_contracts"]:
+            self.assertTrue(path.startswith(("references/", "modules/")))
+            self.assertNotIn("..", path)
+            self.assertNotIn("://", path)
         self.assertEqual(document["load_contracts"][0:2], ["references/status-contract.md", "references/evidence-contract.md"])
         self.assertIn("modules/07-diagnose/MODULE.md", document["load_contracts"])
         self.assertIn(MODULE_PATHS[document["interrupted_module"]], document["load_contracts"])
