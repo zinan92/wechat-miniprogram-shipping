@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "module": "diagnose",
+  "incident_id": "incident-experience-artifact-drift-1",
+  "diagnose_state": "standby",
+  "outcome": "recovered",
+  "interrupted_module": "experience",
+  "post_recovery_current_module": "build",
+  "recovery_goal": "Restore the accepted Experience package and revalidate its upload receipt.",
+  "symptom": {
+    "statement": "The uploaded Experience package does not match the committed candidate artifact.",
+    "observed_at": "2026-08-24T11:00:00Z",
+    "source_ref": "redacted:experience-drift-observation"
+  },
+  "failure_class": "artifact-drift",
+  "observed_facts": [
+    {
+      "fact": "The candidate package digest differs from the recorded upload digest.",
+      "evidence_ref": "redacted:candidate-target-diff",
+      "proves": "The package identity is causally different.",
+      "cannot_prove": "It does not prove the physical-device experience."
+    }
+  ],
+  "hypotheses": [
+    {
+      "id": "artifact-upload-mismatch",
+      "statement": "The upload used a package produced from a different source identity.",
+      "test": "Compare the named candidate and upload package digests from redacted receipts.",
+      "falsifier": "Equal digests with matching source identity reject this hypothesis.",
+      "status": "supported"
+    }
+  ],
+  "causal_invalidation_proposal": {
+    "confirmed": true,
+    "earliest_module": "build",
+    "changed_fields": ["package.digest", "source.commit_sha"],
+    "invalidated_receipt_ids": ["build-r1", "cloudbase-r1", "experience-r1"],
+    "reason_code": "artifact-identity-changed"
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "action": "Rebuild the named candidate from the recorded source and compare package identity.",
+      "result": "The rebuilt package matches the source; the prior upload is stale."
+    }
+  ],
+  "bounded_next_action": "Ask Park rewinds to Build and revalidates the causal receipt chain before Experience.",
+  "human_gate_required": false,
+  "human_gate_ref": null,
+  "human_gate_summary": null,
+  "unproven_claims": ["Device Acceptance and formal Release remain unproven."],
+  "load_contracts": [
+    "references/status-contract.md",
+    "references/evidence-contract.md",
+    "references/human-gates-contract.md",
+    "references/transition-contract.md",
+    "modules/07-diagnose/MODULE.md",
+    "modules/04-experience/MODULE.md"
+  ]
+}

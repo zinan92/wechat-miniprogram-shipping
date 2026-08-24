@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "module": "diagnose",
+  "incident_id": "incident-device-qr-gate-1",
+  "diagnose_state": "active",
+  "outcome": "blocked-external",
+  "interrupted_module": "device",
+  "post_recovery_current_module": "device",
+  "recovery_goal": "Confirm the accepted Experience package on the named physical device and account path.",
+  "symptom": {
+    "statement": "The physical-device acceptance path is waiting for a human QR and account confirmation.",
+    "observed_at": "2026-08-24T11:10:00Z",
+    "source_ref": "redacted:device-gate"
+  },
+  "failure_class": "device-only",
+  "observed_facts": [
+    {
+      "fact": "Simulator and package evidence are available, but the physical device observation is absent.",
+      "evidence_ref": "redacted:simulator-only",
+      "proves": "The missing gate is device-only for this incident.",
+      "cannot_prove": "Simulator evidence cannot prove physical-device UX."
+    }
+  ],
+  "hypotheses": [
+    {
+      "id": "device-gate-awaiting-human",
+      "statement": "The package is ready and the remaining blocker is human device/account access.",
+      "test": "Have the owner perform the named device path and read back the version and route.",
+      "falsifier": "A reproducible source or package mismatch rejects the device-only hypothesis.",
+      "status": "open"
+    }
+  ],
+  "causal_invalidation_proposal": {
+    "confirmed": false,
+    "earliest_module": null,
+    "changed_fields": [],
+    "invalidated_receipt_ids": [],
+    "reason_code": null
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "action": "Prepare the physical-device read-back human gate.",
+      "result": "Waiting for owner confirmation and observation."
+    }
+  ],
+  "bounded_next_action": "Park authorizes the smallest device read-back gate; no retry or source rewrite is inferred.",
+  "human_gate_required": true,
+  "human_gate_ref": "redacted:device-acceptance-gate",
+  "human_gate_summary": {
+    "state": "awaiting-human",
+    "action_type": "physical-device-acceptance",
+    "action_scope": "device-v1",
+    "authorizing_role": "owner",
+    "evidence_ref": "redacted:device-gate"
+  },
+  "unproven_claims": ["Physical-device behavior and formal release remain unproven."],
+  "load_contracts": [
+    "references/status-contract.md",
+    "references/evidence-contract.md",
+    "references/human-gates-contract.md",
+    "references/transition-contract.md",
+    "modules/07-diagnose/MODULE.md",
+    "modules/05-device/MODULE.md"
+  ]
+}
