@@ -8,10 +8,22 @@
   "service_boundary": {
     "page_facing_api": ["readNote"],
     "mock_api": ["readNote"],
-    "cloud_api": ["readNote"]
+    "cloud_api": ["readNote"],
+    "mock_result_shapes": {"readNote": "note-v1"},
+    "cloud_result_shapes": {"readNote": "note-v1"},
+    "mock_error_codes": ["AUTH_REQUIRED", "NOTE_NOT_FOUND"],
+    "cloud_error_codes": ["AUTH_REQUIRED", "NOTE_NOT_FOUND"]
+  },
+  "plan_boundary": {
+    "plan_receipt_status": "valid",
+    "issue_contract_status": "accepted",
+    "code_work_authorized": true,
+    "cloudbase_claim": false
   },
   "authorization": {
     "unknown_role": "deny",
+    "missing_role": "deny",
+    "suspended_state": "deny",
     "expired_state": "deny"
   },
   "state_machine": {

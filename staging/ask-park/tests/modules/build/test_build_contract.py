@@ -20,7 +20,13 @@ class BuildContractTests(unittest.TestCase):
         self.assertRegex(document["source_sha"], r"^(?:sha256:)?[0-9a-f]{7,64}$")
         self.assertTrue(document["service_boundary"]["page_facing_api"])
         self.assertEqual(set(document["service_boundary"]["mock_api"]), set(document["service_boundary"]["cloud_api"]))
+        self.assertEqual(document["service_boundary"]["mock_result_shapes"], document["service_boundary"]["cloud_result_shapes"])
+        self.assertEqual(document["service_boundary"]["mock_error_codes"], document["service_boundary"]["cloud_error_codes"])
+        self.assertEqual(document["plan_boundary"]["cloudbase_claim"], False)
         self.assertTrue(document["authorization"]["unknown_role"] == "deny")
+        self.assertTrue(document["authorization"]["missing_role"] == "deny")
+        self.assertTrue(document["authorization"]["suspended_state"] == "deny")
+        self.assertTrue(document["plan_boundary"]["code_work_authorized"] == (document["plan_boundary"]["issue_contract_status"] == "accepted" and document["plan_boundary"]["plan_receipt_status"] == "valid"))
         self.assertTrue(document["ordered_content"]["blocks"])
         positions = [block["position"] for block in document["ordered_content"]["blocks"]]
         self.assertEqual(positions, list(range(len(positions))))
@@ -35,6 +41,7 @@ class BuildContractTests(unittest.TestCase):
             self.assertIn(gates[name], {"pass", "fail", "blocked"})
         self.assertTrue(document["unverified_assumptions"])
         self.assertTrue(document["evidence_limitations"])
+        self.assertEqual(document["evidence_claims"], ["verified-software"])
         self.assertNotIn("device", document["evidence_claims"])
         self.assertNotIn("simulator", document["evidence_claims"])
 
@@ -55,6 +62,8 @@ class BuildContractTests(unittest.TestCase):
         self.assertFalse(document["issue_ready"])
         self.assertEqual(document["authorization"]["unknown_role"], "deny")
         self.assertTrue(document["human_gate_required"])
+        self.assertEqual(document["plan_boundary"]["plan_receipt_status"], "missing")
+        self.assertFalse(document["plan_boundary"]["code_work_authorized"])
         self.assertNotIn("credential", json.dumps(document).lower())
 
     def test_content_capabilities_bind_order_and_version(self):
@@ -70,7 +79,7 @@ class BuildContractTests(unittest.TestCase):
         receipt_text = RECEIPT_DOC.read_text(encoding="utf-8")
         for phrase in ("Input", "Output", "Success predicate", "Failure outcomes", "Evidence", "Forbidden boundary"):
             self.assertIn(phrase, module_text)
-        for phrase in ("source SHA", "issue contract", "verified-software", "cannot prove", "Simulator"):
+        for phrase in ("source SHA", "issue contract", "verified-software", "cannot prove", "Simulator", "result shapes", "Plan receipt"):
             self.assertIn(phrase, receipt_text)
 
     def test_build_fixtures_do_not_cross_private_or_live_mutation_boundary(self):

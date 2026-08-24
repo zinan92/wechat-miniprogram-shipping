@@ -23,8 +23,19 @@ service_boundary:
   page_facing_api: [method names]
   mock_api: [method names]
   cloud_api: [method names]
+  mock_result_shapes: {method: stable result shape alias}
+  cloud_result_shapes: {method: stable result shape alias}
+  mock_error_codes: [stable domain codes]
+  cloud_error_codes: [stable domain codes]
+plan_boundary:
+  plan_receipt_status: valid | missing | invalid
+  issue_contract_status: accepted | missing | changed
+  code_work_authorized: true | false
+  cloudbase_claim: false
 authorization:
   unknown_role: deny
+  missing_role: deny
+  suspended_state: deny
   expired_state: deny
 state_machine:
   fail_closed: true
@@ -64,7 +75,12 @@ human_gate_required: true | false
   `issue_ready: false` stops the module; it does not invite issue creation from
   inside Build.
 - `mock_api` and `cloud_api` are equal page-facing method sets. Adapter
-  internals may differ, but result shapes and stable domain errors do not.
+  internals may differ, but `mock_result_shapes`/`cloud_result_shapes` and
+  `mock_error_codes`/`cloud_error_codes` are equal.
+  These result shapes are part of the software receipt's parity evidence.
+- `plan_boundary` must show an accepted issue and valid Plan receipt before
+  `code_work_authorized` becomes true. Missing/changed Plan evidence stops
+  Build before code work; `cloudbase_claim` is always false in this receipt.
 - Unknown role, missing role, suspended state, and expired membership deny.
   Authorization is fail-closed and never derived from a client assertion.
 - `ordered_content.blocks` is the sole order-bearing representation for
