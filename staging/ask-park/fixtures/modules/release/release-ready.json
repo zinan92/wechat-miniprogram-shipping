@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "module": "release",
+  "status": "released",
+  "project_state": "released",
+  "issue_contract_id": "reader-vertical-slice",
+  "predecessor_receipt_ids": ["build-r1", "cloudbase-r1", "experience-r1", "device-r1"],
+  "version_binding": {"source_sha": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", "experience_version_alias": "experience-v1", "device_version_alias": "experience-v1", "matches_predecessors": true},
+  "payment": {"applicability": "required", "provider_truth": "verified", "server_verification_ref": "redacted:payment-truth", "not_applicable_reason": null},
+  "review": {"result": "pass", "readback_ref": "redacted:review-readback"},
+  "release_readback": {"result": "pass", "released_version_alias": "experience-v1", "readback_ref": "redacted:release-readback"},
+  "smoke": {"result": "pass", "evidence_ref": "redacted:release-smoke"},
+  "human_authorizations": [
+    {"action_scope": "payment", "state": "authorized", "authority_basis_ref": "redacted:payment-owner-decision"},
+    {"action_scope": "review", "state": "authorized", "authority_basis_ref": "redacted:review-owner-decision"},
+    {"action_scope": "formal-release", "state": "authorized", "authority_basis_ref": "redacted:release-owner-decision"}
+  ],
+  "unproven_claims": ["Future changes require a new release receipt."],
+  "receipt": {
+    "receipt_id": "release-r1",
+    "receipt_type": "module",
+    "schema_version": 1,
+    "contract_version": "ask-park.receipt/v1",
+    "module": "release",
+    "status": "valid",
+    "applicability": "required",
+    "source": {"repository_alias": "reader-project", "commit_sha": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"},
+    "issue": {"id": "reader-vertical-slice"},
+    "predecessor_receipt_ids": ["build-r1", "cloudbase-r1", "experience-r1", "device-r1"],
+    "artifact": {"kind": "released-experience", "alias": "experience-v1", "digest": "sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"},
+    "package": {"kind": "released-package", "alias": "experience-v1", "digest": "sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"},
+    "target": {"alias": "released-experience-v1", "environment_contract_alias": "release-v1", "redacted_ref": "redacted:released-target"},
+    "invalidation_rules": {"on": ["source.commit_sha", "contract_version", "artifact.digest", "package.digest", "target.environment_contract_alias"], "downstream_modules": [], "causal_rewind": false, "declared_by": "ask-park"},
+    "issued_at": "2026-08-24T14:00:00Z",
+    "evidence_refs": ["redacted:release-readback", "redacted:release-smoke"]
+  }
+}

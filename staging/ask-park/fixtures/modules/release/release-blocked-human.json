@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "module": "release",
+  "status": "blocked-external",
+  "project_state": "active",
+  "issue_contract_id": "reader-vertical-slice",
+  "predecessor_receipt_ids": ["build-r1", "cloudbase-r1", "experience-r1", "device-r1"],
+  "version_binding": {"source_sha": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", "experience_version_alias": "experience-v1", "device_version_alias": "experience-v1", "matches_predecessors": true},
+  "payment": {"applicability": "required", "provider_truth": "verified", "server_verification_ref": "redacted:payment-truth", "not_applicable_reason": null},
+  "review": {"result": "blocked", "readback_ref": null},
+  "release_readback": {"result": "blocked", "released_version_alias": null, "readback_ref": null},
+  "smoke": {"result": "not-applicable", "evidence_ref": null},
+  "human_authorizations": [
+    {"action_scope": "review", "state": "awaiting-human", "authority_basis_ref": "redacted:review-owner-decision"},
+    {"action_scope": "formal-release", "state": "awaiting-human", "authority_basis_ref": "redacted:release-owner-decision"}
+  ],
+  "unproven_claims": ["Review and formal release have not been read back."],
+  "receipt": {
+    "receipt_id": "release-blocked-r1",
+    "receipt_type": "module",
+    "schema_version": 1,
+    "contract_version": "ask-park.receipt/v1",
+    "module": "release",
+    "status": "invalid",
+    "invalid_reason": "human-release-gate-pending",
+    "applicability": "required",
+    "source": {"repository_alias": "reader-project", "commit_sha": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"},
+    "issue": {"id": "reader-vertical-slice"},
+    "predecessor_receipt_ids": ["build-r1", "cloudbase-r1", "experience-r1", "device-r1"],
+    "artifact": {"kind": "release-candidate", "alias": "experience-v1", "digest": "sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"},
+    "package": {"kind": "release-candidate", "alias": "experience-v1", "digest": "sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"},
+    "target": {"alias": "release-pending", "environment_contract_alias": "release-v1", "redacted_ref": "redacted:release-pending"},
+    "invalidation_rules": {"on": ["source.commit_sha", "contract_version", "artifact.digest", "package.digest"], "downstream_modules": [], "causal_rewind": false, "declared_by": "ask-park"},
+    "issued_at": "2026-08-24T14:02:00Z",
+    "evidence_refs": ["redacted:release-gate-pending"]
+  }
+}
