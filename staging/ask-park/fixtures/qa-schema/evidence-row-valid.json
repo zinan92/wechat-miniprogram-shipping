@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "kind": "qa-evidence-row",
+  "surface": "devtools-simulator",
+  "route": "reader-home",
+  "viewport": "iphone-profile",
+  "role": "member",
+  "data_state": "published-readable-long-title",
+  "equivalence": "exact",
+  "evidence_mode": "sanitized-persisted",
+  "tool": {"name": "wechat-devtools", "version": "stable-alias", "runtime_or_base_library": "base-library-v1"},
+  "before_evidence": {"ref": "redacted:before-reader", "sha256": "sha256:4444444444444444444444444444444444444444444444444444444444444444", "captured_at": "2026-08-24T12:30:00Z", "identity": "source-before-alias"},
+  "after_evidence": {"ref": "redacted:after-reader", "sha256": "sha256:5555555555555555555555555555555555555555555555555555555555555555", "captured_at": "2026-08-24T12:35:00Z", "source_or_package_identity": "experience-v1", "final_compile_receipt_id": "compile-r1"},
+  "limitations": ["Simulator does not prove physical-device behavior."]
+}

@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "kind": "qa-target",
+  "digest": "sha256:786a580a32dcbd997180d76cf35055b0901c8c2baee961e2c28ee1b117ef5a1f",
+  "qa_run_id": "qa-reader-attempt-1",
+  "issue_contract_id": "reader-vertical-slice",
+  "candidate_manifest_digest": "sha256:286d520fe3ffb7baa3d3024681fa94f93b891cd0153413141854da1d51928395",
+  "evidence_mode": "sanitized-persisted",
+  "evidence_refs": ["redacted:qa2-target"],
+  "target": {
+    "target_alias": "reader-experience-r1",
+    "deployment_receipt_id": "experience-r1",
+    "environment_contract_alias": "backend-v1",
+    "platform_version": "experience-v1",
+    "upload_note": "sha=0123456; qa_candidate=286d520f",
+    "live_index_digest": "sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+    "asset_digests": ["sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"]
+  },
+  "predecessor_receipt_ids": ["build-r1", "cloudbase-r1", "experience-r1"]
+}

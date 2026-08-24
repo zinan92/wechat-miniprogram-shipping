@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "kind": "qa-candidate",
+  "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "qa_run_id": "qa-reader-attempt-1",
+  "issue_contract_id": "reader-vertical-slice",
+  "issue_contract_version": 1,
+  "origin_module": "build",
+  "evidence_mode": "sanitized-persisted",
+  "candidate": {"source_sha": "not-a-sha"},
+  "predecessor_receipt_ids": [],
+  "qa1_evidence_hashes": []
+}

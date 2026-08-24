@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "kind": "qa-state",
+  "qa": {
+    "execution_state": "unavailable",
+    "result": "none",
+    "control_outcome": "qa-prerequisite-missing",
+    "gate": "qa-1",
+    "candidate_manifest_digest": null,
+    "target_manifest_digest": null,
+    "attempt": 1,
+    "max_attempts": 3,
+    "origin_module": "build",
+    "result_receipt_id": null
+  }
+}

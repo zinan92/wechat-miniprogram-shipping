@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "kind": "qa-target",
+  "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "qa_run_id": "qa-reader-attempt-1",
+  "issue_contract_id": "reader-vertical-slice",
+  "candidate_manifest_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+  "evidence_mode": "sanitized-persisted",
+  "target": {"target_alias": "reader-experience-r1", "deployment_receipt_id": "experience-r1", "environment_contract_alias": "backend-v1", "platform_version": "experience-v1", "upload_note": "stale", "live_index_digest": null, "asset_digests": []},
+  "predecessor_receipt_ids": ["experience-r1"]
+}

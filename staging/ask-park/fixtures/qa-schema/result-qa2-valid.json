@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "kind": "qa-result",
+  "digest": "sha256:5a9b2d87696e8a17d5da32bfc508891bc4a2571d3df13f192504dbe639e7fb49",
+  "qa_run_id": "qa-reader-attempt-1",
+  "issue_contract_id": "reader-vertical-slice",
+  "result": "QA_PASS",
+  "gate": "qa-2",
+  "candidate_manifest_digest": "sha256:286d520fe3ffb7baa3d3024681fa94f93b891cd0153413141854da1d51928395",
+  "target_manifest_digest": "sha256:786a580a32dcbd997180d76cf35055b0901c8c2baee961e2c28ee1b117ef5a1f",
+  "target_receipt_id": "experience-r1",
+  "predecessor_receipt_ids": ["build-r1", "cloudbase-r1", "experience-r1"],
+  "observed_at": "2026-08-24T12:40:00Z",
+  "evidence_mode": "sanitized-persisted",
+  "evidence_refs": ["redacted:qa2-result"],
+  "evidence_hashes": ["sha256:3333333333333333333333333333333333333333333333333333333333333333"],
+  "passed_checks": ["target-identity", "target-render", "package-drift"],
+  "limitations": ["Physical device and formal release remain unproven."],
+  "automated_checks_passed": true
+}

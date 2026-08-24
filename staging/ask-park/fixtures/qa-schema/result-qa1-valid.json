@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "kind": "qa-result",
+  "digest": "sha256:7b5c485a145a289fc84a04721342c367981b7f643f77e04a13bf04ac03efb073",
+  "qa_run_id": "qa-reader-attempt-1",
+  "issue_contract_id": "reader-vertical-slice",
+  "result": "QA_PASS",
+  "gate": "qa-1",
+  "candidate_manifest_digest": "sha256:286d520fe3ffb7baa3d3024681fa94f93b891cd0153413141854da1d51928395",
+  "target_manifest_digest": null,
+  "target_receipt_id": null,
+  "predecessor_receipt_ids": ["build-r1"],
+  "observed_at": "2026-08-24T12:20:00Z",
+  "evidence_mode": "sanitized-persisted",
+  "evidence_refs": ["redacted:qa1-result"],
+  "evidence_hashes": ["sha256:2222222222222222222222222222222222222222222222222222222222222222"],
+  "passed_checks": ["contract", "software", "security", "reproducibility"],
+  "limitations": ["Target deployment and physical device are not proven."],
+  "automated_checks_passed": true
+}
