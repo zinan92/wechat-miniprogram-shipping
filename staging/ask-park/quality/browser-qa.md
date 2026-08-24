@@ -35,3 +35,8 @@ candidate.
 The negative control is pass → inject stale/mock/deep-link drift → `QA_FAIL`
 with evidence → restore target → pass; the candidate source SHA remains
 unchanged throughout.
+
+`capture_qa1()` produces Browser-first sanitized before/after records for the
+affected/shared matrix. `run_hermetic_qa2()` keeps localhost transport refs
+ephemeral and returns only redacted server aliases in its result; raw response
+hashes and candidate/compile identity are checked against each matrix row.

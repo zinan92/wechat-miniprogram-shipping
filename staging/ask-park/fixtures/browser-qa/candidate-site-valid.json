@@ -6,7 +6,8 @@
   "auth_mode": "member",
   "deep_links": true,
   "spa_fallback": true,
-  "mock_marker": false
+  "mock_marker": false,
+  "render_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
   ,"matrix_identity_alias": "candidate-v1",
   "compile_provenance": "compile-v1"
 }

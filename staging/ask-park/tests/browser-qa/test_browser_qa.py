@@ -35,11 +35,14 @@ class BrowserQATests(unittest.TestCase):
 
         raw = self.qa.run_hermetic_qa2(self.fixture("candidate-site-valid.json"), self.fixture("target-site-valid.json"), self.fixture("matrix-valid.json"))
         self.assertEqual(raw["result"], "QA_PASS")
-        self.assertTrue(raw["adapter"]["candidate_url"].startswith("http://127.0.0.1:"))
+        self.assertTrue(raw["adapter"]["candidate_server_ref"].startswith("redacted:"))
         self.assertEqual(raw["adapter"]["external_network_events"], [])
         self.assertEqual(raw["adapter"]["mutation_events"], [])
         self.assertTrue(raw["evidence"]["before"]["sanitized"])
         self.assertTrue(raw["evidence"]["after"]["sanitized"])
+        qa1 = self.qa.capture_qa1(self.fixture("candidate-site-valid.json"), self.fixture("matrix-valid.json"))
+        self.assertTrue(qa1["browser_first"])
+        self.assertEqual(len(qa1["captures"]), 8)
 
     def test_stale_bundle_mock_marker_and_deep_link_drift_fail_with_findings(self):
         result = self.qa.compare_candidate_target(self.fixture("candidate-site-valid.json"), self.fixture("target-stale.json"), self.fixture("matrix-valid.json"))
@@ -52,6 +55,11 @@ class BrowserQATests(unittest.TestCase):
         result = self.qa.compare_candidate_target(candidate, self.fixture("target-site-valid.json"), matrix)
         self.assertEqual(result["result"], "QA_FAIL")
         self.assertIn("matrix source identity differs from candidate", result["findings"])
+        matrix = self.fixture("matrix-valid.json")
+        matrix[0]["after_hash"] = "sha256:" + "9" * 64
+        result = self.qa.compare_candidate_target(self.fixture("candidate-site-valid.json"), self.fixture("target-site-valid.json"), matrix)
+        self.assertEqual(result["result"], "QA_FAIL")
+        self.assertIn("matrix after hashes differ from target render digest", result["findings"])
 
     def test_missing_browser_is_prerequisite_missing_not_blocked(self):
         state = self.qa.prerequisite_missing(**self.fixture("browser-missing.json"))
@@ -88,6 +96,14 @@ class BrowserQATests(unittest.TestCase):
     def test_raw_site_private_and_unknown_fields_fail(self):
         candidate = self.fixture("candidate-site-valid.json")
         candidate["private_url"] = "cloud://private"
+        with self.assertRaises(self.qa.BrowserQAError):
+            self.qa.validate_site(candidate)
+        matrix = self.fixture("matrix-valid.json")
+        matrix[0]["next_module"] = "release"
+        with self.assertRaises(self.qa.BrowserQAError):
+            self.qa.validate_matrix(matrix)
+        candidate = self.fixture("candidate-site-valid.json")
+        candidate.pop("compile_provenance")
         with self.assertRaises(self.qa.BrowserQAError):
             self.qa.validate_site(candidate)
         candidate = self.fixture("candidate-site-valid.json")

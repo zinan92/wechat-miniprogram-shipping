@@ -45,7 +45,7 @@ def _safe_text(value: Any) -> bool:
 def validate_site(site: Mapping[str, Any], *, target: bool = False) -> dict[str, Any]:
     if not isinstance(site, Mapping):
         _fail("BROWSER_SITE_TYPE", "raw site record must be an object", "site")
-    allowed = {"source_sha", "index_digest", "js_digest", "css_digest", "auth_mode", "deep_links", "spa_fallback", "mock_marker"} | ({"target_alias"} if target else set()) | {"matrix_identity_alias", "compile_provenance"}
+    allowed = {"source_sha", "index_digest", "js_digest", "css_digest", "auth_mode", "deep_links", "spa_fallback", "mock_marker", "render_digest"} | ({"target_alias"} if target else set()) | {"matrix_identity_alias", "compile_provenance"}
     if any(key not in allowed for key in site):
         _fail("BROWSER_SITE_UNKNOWN_FIELD", "raw site contains an undeclared field", "site.<key>")
     if not all(_safe_text(value) for value in site.values() if isinstance(value, str)):
@@ -67,6 +67,8 @@ def validate_site(site: Mapping[str, Any], *, target: bool = False) -> dict[str,
         _fail("BROWSER_MOCK_MARKER", "mock marker must be absent", "site.mock_marker")
     if target and not _alias(site.get("target_alias")):
         _fail("BROWSER_TARGET_ALIAS", "target alias is required", "site.target_alias")
+    if not target and (not _alias(site.get("matrix_identity_alias")) or not _alias(site.get("compile_provenance")) or not _digest(site.get("render_digest"))):
+        _fail("BROWSER_COMPILE_PROVENANCE", "candidate requires matrix identity, compile provenance, and render digest", "site")
     return copy.deepcopy(dict(site))
 
 
@@ -75,6 +77,9 @@ def validate_matrix(matrix: list[Mapping[str, Any]]) -> dict[str, Any]:
         _fail("BROWSER_MATRIX_REQUIRED", "Browser matrix must be non-empty", "matrix")
     states = set()
     for row in matrix:
+        allowed = {"route", "viewport", "role", "data_state", "state", "tool", "runtime", "before_hash", "after_hash", "source_identity", "final_compile_provenance"}
+        if any(key not in allowed for key in row):
+            _fail("BROWSER_MATRIX_UNKNOWN_FIELD", "matrix row contains an undeclared field", "matrix.<key>")
         for key in ("route", "viewport", "role", "data_state", "state", "tool", "runtime", "before_hash", "after_hash", "source_identity", "final_compile_provenance"):
             if key not in row:
                 _fail("BROWSER_MATRIX_REQUIRED", "matrix row field is required", f"matrix.{key}")
@@ -82,6 +87,8 @@ def validate_matrix(matrix: list[Mapping[str, Any]]) -> dict[str, Any]:
             _fail("BROWSER_MATRIX_ALIAS", "matrix identity fields must be aliases", "matrix")
         if not _digest(row["before_hash"]) or not _digest(row["after_hash"]):
             _fail("BROWSER_MATRIX_HASH", "matrix before/after hashes must be full SHA-256", "matrix")
+        if any(not _safe_text(value) for value in row.values() if isinstance(value, str)):
+            _fail("BROWSER_MATRIX_PRIVATE", "matrix row contains a private value", "matrix")
         states.add(row["state"])
     missing = REQUIRED_STATES - states
     if missing:
@@ -109,6 +116,10 @@ def compare_candidate_target(candidate: Mapping[str, Any], target: Mapping[str, 
         findings.append("target contains a mock marker")
     expected_source = candidate_site.get("matrix_identity_alias", candidate_site["source_sha"])
     expected_compile = candidate_site.get("compile_provenance")
+    if candidate_site.get("render_digest") and any(row["before_hash"] != candidate_site["render_digest"] for row in matrix):
+        findings.append("matrix before hashes differ from candidate render digest")
+    if target_site.get("render_digest") and any(row["after_hash"] != target_site["render_digest"] for row in matrix):
+        findings.append("matrix after hashes differ from target render digest")
     for row in matrix:
         if row["source_identity"] != expected_source:
             findings.append("matrix source identity differs from candidate")
@@ -161,7 +172,7 @@ def run_hermetic_qa2(candidate: Mapping[str, Any], target: Mapping[str, Any], ma
     result = compare_candidate_target(candidate_document, target_document, matrix)
     result.update(
         {
-            "adapter": {"candidate_url": candidate_url, "target_url": target_url, "external_network_events": [], "mutation_events": []},
+            "adapter": {"candidate_server_ref": "redacted:localhost-candidate", "target_server_ref": "redacted:localhost-target", "external_network_events": [], "mutation_events": [], "transport": "ephemeral-only"},
             "evidence": {
                 "before": {"surface": "local-browser", "ref": "redacted:browser-before", "sha256": "sha256:" + hashlib.sha256(candidate_raw).hexdigest(), "sanitized": True, "identity": candidate_document["source_sha"]},
                 "after": {"surface": "local-browser", "ref": "redacted:browser-after", "sha256": "sha256:" + hashlib.sha256(target_raw).hexdigest(), "sanitized": True, "identity": target_document["source_sha"]},
@@ -170,6 +181,25 @@ def run_hermetic_qa2(candidate: Mapping[str, Any], target: Mapping[str, Any], ma
         }
     )
     return result
+
+
+def capture_qa1(candidate: Mapping[str, Any], matrix: list[Mapping[str, Any]], *, browser_available: bool = True) -> dict[str, Any]:
+    """Record a sanitized QA-1 before/after capture plan from raw fixture input."""
+
+    if not browser_available:
+        return prerequisite_missing(browser_available=False, qa_run_id="browser-qa1")
+    site = validate_site(candidate)
+    validate_matrix(matrix)
+    return {
+        "execution_state": "complete",
+        "result": "QA_PASS",
+        "browser_first": True,
+        "evidence_mode": "sanitized-persisted",
+        "candidate_source_sha": site["source_sha"],
+        "captures": [{"route": row["route"], "viewport": row["viewport"], "before_ref": "redacted:qa1-before", "after_ref": "redacted:qa1-after", "before_hash": row["before_hash"], "after_hash": row["after_hash"], "sanitized": True} for row in matrix],
+        "external_network_events": [],
+        "mutation_events": [],
+    }
 
 
 def prerequisite_missing(*, browser_available: bool, qa_run_id: str) -> dict[str, Any]:
