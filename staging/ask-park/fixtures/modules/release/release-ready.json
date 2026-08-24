@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "module": "release",
+  "status": "released",
+  "project_state": "released",
+  "issue_contract_id": "reader-vertical-slice",
+  "predecessor_receipt_ids": ["build-r1", "cloudbase-r1", "experience-r1", "device-r1"],
+  "version_binding": {"source_sha": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", "experience_version_alias": "experience-v1", "device_version_alias": "experience-v1", "matches_predecessors": true},
+  "predecessor_bindings": {"experience": {"receipt_id": "experience-r1", "source_sha": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", "version_alias": "experience-v1"}, "device": {"receipt_id": "device-r1", "source_sha": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", "version_alias": "experience-v1"}},
+  "payment": {"applicability": "required", "provider_truth": "verified", "server_verification_ref": "redacted:payment-truth", "not_applicable_reason": null},
+  "review": {"result": "pass", "readback_ref": "redacted:review-readback"},
+  "release_readback": {"result": "pass", "released_version_alias": "experience-v1", "readback_ref": "redacted:release-readback"},
+  "smoke": {"result": "pass", "evidence_ref": "redacted:release-smoke"},
+  "human_authorizations": [
+    {"gate_id": "gate-payment-r1", "schema_version": 1, "contract_version": "ask-park.human-gate/v1", "state": "read-back", "action_type": "payment", "action_scope": "payment-r1", "authorizing_role": "owner", "requested_at": "2026-08-24T13:50:00Z", "authorized_at": "2026-08-24T13:51:00Z", "evidence_ref": "redacted:payment-gate", "authority_basis": "owner decision recorded outside credentials"},
+    {"gate_id": "gate-review-r1", "schema_version": 1, "contract_version": "ask-park.human-gate/v1", "state": "read-back", "action_type": "review", "action_scope": "review-r1", "authorizing_role": "owner", "requested_at": "2026-08-24T13:52:00Z", "authorized_at": "2026-08-24T13:53:00Z", "evidence_ref": "redacted:review-gate", "authority_basis": "owner decision recorded outside credentials"},
+    {"gate_id": "gate-release-r1", "schema_version": 1, "contract_version": "ask-park.human-gate/v1", "state": "read-back", "action_type": "formal-release", "action_scope": "release-r1", "authorizing_role": "owner", "requested_at": "2026-08-24T13:54:00Z", "authorized_at": "2026-08-24T13:55:00Z", "evidence_ref": "redacted:release-gate", "authority_basis": "owner decision recorded outside credentials"}
+  ],
+  "unproven_claims": ["Future changes require a new release receipt."],
+  "receipt": {
+    "receipt_id": "release-r1",
+    "receipt_type": "module",
+    "schema_version": 1,
+    "contract_version": "ask-park.receipt/v1",
+    "module": "release",
+    "status": "valid",
+    "applicability": "required",
+    "source": {"repository_alias": "reader-project", "commit_sha": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"},
+    "issue": {"id": "reader-vertical-slice"},
+    "predecessor_receipt_ids": ["build-r1", "cloudbase-r1", "experience-r1", "device-r1"],
+    "artifact": {"kind": "released-experience", "alias": "experience-v1", "digest": "sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"},
+    "package": {"kind": "released-package", "alias": "experience-v1", "digest": "sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"},
+    "target": {"alias": "released-experience-v1", "environment_contract_alias": "release-v1", "redacted_ref": "redacted:released-target"},
+    "invalidation_rules": {"on": ["source.commit_sha", "contract_version", "artifact.digest", "package.digest", "target.environment_contract_alias"], "downstream_modules": [], "causal_rewind": false, "declared_by": "ask-park"},
+    "issued_at": "2026-08-24T14:00:00Z",
+    "evidence_refs": ["redacted:release-readback", "redacted:release-smoke"]
+  }
+}
