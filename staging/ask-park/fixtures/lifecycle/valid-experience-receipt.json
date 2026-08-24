@@ -1,0 +1,18 @@
+{
+  "receipt_id": "experience-r1",
+  "receipt_type": "module",
+  "schema_version": 1,
+  "contract_version": "ask-park.receipt/v1",
+  "module": "experience",
+  "status": "valid",
+  "applicability": "required",
+  "source": {"repository_alias": "wechat-project", "commit_sha": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+  "issue": {"id": "13"},
+  "predecessor_receipt_ids": ["cloudbase-r1"],
+  "artifact": {"kind": "experience-version", "alias": "experience-v1", "digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"},
+  "package": {"kind": "mini-program-package", "alias": "experience-package", "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"},
+  "target": {"alias": "wechat-experience", "environment_contract_alias": "wechat-app-v1", "redacted_ref": "redacted:experience-target"},
+  "invalidation_rules": {"on": ["source.commit_sha", "contract_version", "artifact.digest", "package.digest", "target.environment_contract_alias"], "downstream_modules": ["device", "release"], "causal_rewind": false, "declared_by": "ask-park"},
+  "issued_at": "2026-08-24T10:04:00Z",
+  "evidence_refs": ["redacted:experience-upload"]
+}
