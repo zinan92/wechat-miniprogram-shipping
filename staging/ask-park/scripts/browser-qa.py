@@ -195,6 +195,15 @@ def capture_qa1(candidate: Mapping[str, Any], matrix: list[Mapping[str, Any]], *
         return prerequisite_missing(browser_available=False, qa_run_id="browser-qa1")
     site = validate_site(candidate)
     validate_matrix(matrix)
+    expected_source = site["matrix_identity_alias"]
+    expected_compile = site["compile_provenance"]
+    for row in matrix:
+        if row["source_identity"] != expected_source:
+            _fail("BROWSER_CAPTURE_IDENTITY", "QA-1 row is not bound to candidate identity", "matrix.source_identity")
+        if row["final_compile_provenance"] != expected_compile:
+            _fail("BROWSER_CAPTURE_COMPILE", "QA-1 row is not bound to final compile", "matrix.final_compile_provenance")
+        if row["before_hash"] != site["render_digest"]:
+            _fail("BROWSER_CAPTURE_HASH", "QA-1 before hash is not bound to candidate render", "matrix.before_hash")
     return {
         "execution_state": "complete",
         "result": "QA_PASS",

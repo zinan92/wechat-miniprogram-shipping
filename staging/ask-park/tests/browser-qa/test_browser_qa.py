@@ -43,6 +43,11 @@ class BrowserQATests(unittest.TestCase):
         qa1 = self.qa.capture_qa1(self.fixture("candidate-site-valid.json"), self.fixture("matrix-valid.json"))
         self.assertTrue(qa1["browser_first"])
         self.assertEqual(len(qa1["captures"]), 8)
+        bad_matrix = self.fixture("matrix-valid.json")
+        bad_matrix[0]["source_identity"] = "other-candidate"
+        with self.assertRaises(self.qa.BrowserQAError) as raised:
+            self.qa.capture_qa1(self.fixture("candidate-site-valid.json"), bad_matrix)
+        self.assertEqual(raised.exception.code, "BROWSER_CAPTURE_IDENTITY")
 
     def test_stale_bundle_mock_marker_and_deep_link_drift_fail_with_findings(self):
         result = self.qa.compare_candidate_target(self.fixture("candidate-site-valid.json"), self.fixture("target-stale.json"), self.fixture("matrix-valid.json"))
