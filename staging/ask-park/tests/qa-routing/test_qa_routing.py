@@ -56,6 +56,9 @@ class QARoutingTests(unittest.TestCase):
         advisory = self.routing.advisory_from_packet(packet)
         self.assertEqual(advisory["verdict"], "QA_FAIL")
         self.assertEqual(advisory["advisory_earliest_layer"], "build")
+        self.assertEqual(advisory["candidate_sha_before"], packet["candidate_sha_before"])
+        self.assertEqual(advisory["worktree_sha_after"], packet["worktree_sha_after"])
+        self.assertEqual(advisory["limitations"], packet["limitations"])
         self.assertNotIn("current_module", advisory)
         self.assertNotIn("selected_module", advisory)
         self.assertNotIn("invalidated_receipt_ids", advisory)
@@ -67,6 +70,14 @@ class QARoutingTests(unittest.TestCase):
 
         diagnosis = self.fixture(ROUTING_FIXTURES, "diagnosis-device.json")
         diagnosis["recovery_goal"] = "inspect https://private.example"
+        self.assertCode(
+            "QA_DIAGNOSIS_PRIVATE",
+            self.routing.route_qa_result,
+            self.state("experience-completed.json"),
+            packet,
+            diagnosis=diagnosis,
+        )
+        diagnosis["recovery_goal"] = "fix /Users/private AppID=wx123"
         self.assertCode(
             "QA_DIAGNOSIS_PRIVATE",
             self.routing.route_qa_result,
@@ -117,6 +128,15 @@ class QARoutingTests(unittest.TestCase):
         self.assertEqual(result["incident"]["recovery_module"], "build")
         self.assertEqual(result["invalidated_receipt_ids"], ["build-r1", "cloudbase-r1", "experience-r1"])
         self.assertEqual(result["state"]["rewind"]["earliest_invalidated_module"], "build")
+
+        self.assertCode(
+            "QA_CAUSAL_RECEIPTS_INCOMPLETE",
+            self.routing.route_qa_result,
+            state,
+            packet,
+            diagnosis=diagnosis,
+            receipts={"build-r1": self.receipts()["build-r1"]},
+        )
 
     def test_missing_human_evidence_creates_gate_without_diagnose(self):
         state = self.state("experience-completed.json")

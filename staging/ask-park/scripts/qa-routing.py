@@ -109,7 +109,7 @@ def _safe(value: Any) -> bool:
         lowered = value.lower()
         if any(prefix in lowered for prefix in ("http://", "https://", "file://", "cloud://")):
             return False
-        if any(marker in lowered for marker in ("next_module", "current_module", "route_to")):
+        if any(marker in lowered for marker in ("/users/", "/private/", "~/", "next_module", "current_module", "route_to", "appid", "app_id", "appsecret", "environment_id", "env_id", "openid", "credential", "secret", "token", "password", "private_key", "api_key", "cookie")):
             return False
         if any(value.startswith(prefix) for prefix in PRIVATE_PREFIXES[3:]):
             return False
@@ -147,6 +147,13 @@ def advisory_from_packet(packet: Mapping[str, Any]) -> dict[str, Any]:
         "attempt": checked["attempt"],
         "issue_contract_id": checked["issue_contract_id"],
         "evaluator_identity": checked["evaluator_identity"],
+        "candidate_sha_before": checked["candidate_sha_before"],
+        "candidate_sha_after": checked["candidate_sha_after"],
+        "worktree_sha_before": checked["worktree_sha_before"],
+        "worktree_sha_after": checked["worktree_sha_after"],
+        "bounded_inputs": copy.deepcopy(checked["bounded_inputs"]),
+        "exclusions": copy.deepcopy(checked["exclusions"]),
+        "limitations": copy.deepcopy(checked["limitations"]),
         "read_only": True,
     }
 
@@ -282,6 +289,10 @@ def route_qa_result(
             _fail("QA_CAUSAL_INVALIDATION", "Ask Park could not validate the causal invalidation proposal", "diagnosis")
         if invalidation.earliest_invalidated_module != proposal["earliest_module"]:
             _fail("QA_CAUSAL_PROPOSAL_MISMATCH", "Diagnose earliest module does not match the receipt closure", "diagnosis.earliest_module")
+        rewind_ids = set(rewound_state["rewind"]["invalidated_receipt_ids"])
+        closure_ids = set(invalidation.invalidated_receipt_ids)
+        if rewind_ids != closure_ids:
+            _fail("QA_CAUSAL_RECEIPTS_INCOMPLETE", "receipt input does not cover the full state rewind closure", "receipts")
         invalidated_ids = list(invalidation.invalidated_receipt_ids)
     elif receipt_input is not None:
         if (isinstance(receipt_input, Mapping) and receipt_input) or (not isinstance(receipt_input, Mapping) and receipt_input):
