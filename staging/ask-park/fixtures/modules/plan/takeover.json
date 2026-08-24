@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "module": "plan",
+  "mode": "takeover",
+  "control_outcome": "none",
+  "issue_ready": true,
+  "decision_needed": null,
+  "outcome": {
+    "statement": "Restore the existing reader's member save path without changing its accepted content boundary.",
+    "first_useful_moment": "A member can open an existing published note and see the previously recorded save state."
+  },
+  "acceptance_criteria": [
+    "The takeover identifies the reproducible source and existing reader entry.",
+    "The member save state is read back from the existing service boundary.",
+    "The restored flow preserves the accepted note identity and content order.",
+    "Any unknown identity or environment binding remains explicitly unknown."
+  ],
+  "scope": {
+    "in": ["existing reader route", "save-state restoration", "source read-back"],
+    "out": ["new content model", "payment", "visual redesign"]
+  },
+  "forbidden_changes": [
+    "Do not rewrite accepted criteria during takeover.",
+    "Do not use an unverified environment identity as evidence.",
+    "Do not change data or deploy while Plan is collecting facts."
+  ],
+  "complexity": {
+    "label": "L",
+    "rationale": "Takeover crosses source, identity, backend, and migration uncertainty.",
+    "test_depth": "full-review"
+  },
+  "applicability": {
+    "plan": "required",
+    "build": "required",
+    "cloudbase": "required",
+    "experience": "required",
+    "device": "required",
+    "release": "not-applicable"
+  },
+  "applicability_reasons": {
+    "release": "Formal release is outside this maintenance takeover target."
+  },
+  "risk_map": [
+    {"category": "intent", "status": "known", "impact": "The takeover preserves the existing first useful moment.", "mitigation": "Compare the request with the accepted reader contract."},
+    {"category": "identity", "status": "unknown", "impact": "The repository and target account binding is not yet read back.", "mitigation": "Record a read-only identity/source investigation before Build."},
+    {"category": "backend", "status": "unknown", "impact": "The existing service rules may differ from the client assumptions.", "mitigation": "Inspect the page-facing contract and rules without mutating data."},
+    {"category": "experience", "status": "known", "impact": "The existing reader route is part of the accepted outcome.", "mitigation": "Preserve route and content identity in the issue contract."},
+    {"category": "device", "status": "unknown", "impact": "Prior screenshots do not prove the current package.", "mitigation": "Require a fresh device acceptance path later."},
+    {"category": "release", "status": "known", "impact": "Formal release is outside this takeover boundary.", "mitigation": "Mark Release not-applicable for this maintenance target."},
+    {"category": "migration", "status": "unknown", "impact": "Existing identities may need a safe compatibility map.", "mitigation": "Define a migration story only after source identity is verified."}
+  ],
+  "solution_search": [
+    {"kind": "repository", "query": "existing reader and save-state implementation", "finding": "The takeover repository contains a reusable reader boundary.", "decision": "adapt", "evidence_ref": "redacted:takeover-repository"},
+    {"kind": "component", "query": "ordered content and save-state UI", "finding": "The current component can be retained while its service boundary is verified.", "decision": "reuse", "evidence_ref": "redacted:reader-component"}
+  ],
+  "ordered_work": [
+    {
+      "story_id": "takeover-source-audit",
+      "outcome": "The existing reader source and service boundary are reproducible and identity-labeled.",
+      "acceptance_criteria": [
+        "The source commit and repository alias are recorded.",
+        "The reader route and save-state contract are identified.",
+        "Unknown environment or identity facts are listed with read-only checks."
+      ],
+      "in_scope": ["source audit", "identity read-back", "service contract inventory"],
+      "out_of_scope": ["deployment", "data migration", "formal release"],
+      "forbidden_changes": ["No live mutation during takeover Plan."],
+      "complexity": "L",
+      "issue_contract_ready": true
+    }
+  ],
+  "issue_contract": {
+    "immutable": true,
+    "version": 1,
+    "contract_id": "plan-takeover-v1"
+  },
+  "issue_actions": ["prepare"],
+  "source_evidence": [
+    "redacted:repository-alias",
+    "redacted:accepted-reader-contract",
+    "redacted:prior-save-state-observation"
+  ]
+}

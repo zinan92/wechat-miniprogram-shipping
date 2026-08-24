@@ -47,7 +47,7 @@ class PackageLayoutValidatorTests(unittest.TestCase):
     def test_nested_skill_metadata_is_rejected(self):
         package = self.copy_template()
         nested = package / "modules" / "01-plan"
-        nested.mkdir()
+        nested.mkdir(exist_ok=True)
         (nested / "SKILL.md").write_text("---\nname: accidental\n---\n", encoding="utf-8")
 
         result = self.run_validator(package)
@@ -58,7 +58,7 @@ class PackageLayoutValidatorTests(unittest.TestCase):
     def test_nested_module_file_is_allowed(self):
         package = self.copy_template()
         module = package / "modules" / "01-plan"
-        module.mkdir()
+        module.mkdir(exist_ok=True)
         (module / "MODULE.md").write_text("# Plan module\n", encoding="utf-8")
 
         result = self.run_validator(package)

@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "module": "plan",
+  "mode": "new",
+  "control_outcome": "unknown",
+  "issue_ready": false,
+  "decision_needed": "Choose whether the first useful moment is note browsing or author publishing.",
+  "outcome": {
+    "statement": "The first useful moment is unresolved between note browsing and author publishing.",
+    "first_useful_moment": "unknown"
+  },
+  "acceptance_criteria": [
+    "The competing first useful moments are listed for Park.",
+    "The decision changes the module applicability and issue queue.",
+    "No code or issue contract is started while the intent is unresolved."
+  ],
+  "scope": {
+    "in": ["intent clarification"],
+    "out": ["implementation", "deployment", "release" ]
+  },
+  "forbidden_changes": [
+    "Do not choose a first useful moment from the latest chat wording.",
+    "Do not request credentials to resolve a product decision.",
+    "Do not prepare implementation issues while intent is unknown."
+  ],
+  "complexity": {
+    "label": "S",
+    "rationale": "No implementation size can be trusted until the outcome is chosen.",
+    "test_depth": "targeted"
+  },
+  "applicability": {
+    "plan": "required",
+    "build": "required",
+    "cloudbase": "required",
+    "experience": "required",
+    "device": "required",
+    "release": "required"
+  },
+  "applicability_reasons": {},
+  "risk_map": [
+    {"category": "intent", "status": "blocked", "impact": "The outcome is not yet testable.", "mitigation": "Ask Park one forced-choice product question."},
+    {"category": "identity", "status": "unknown", "impact": "Identity scope depends on the chosen outcome.", "mitigation": "Defer identity planning until intent is resolved."},
+    {"category": "backend", "status": "unknown", "impact": "Backend applicability depends on the chosen outcome.", "mitigation": "Record no provider assumption yet."},
+    {"category": "experience", "status": "unknown", "impact": "The first route is not selected.", "mitigation": "Define the route after the product decision."},
+    {"category": "device", "status": "unknown", "impact": "Device scope is not determined.", "mitigation": "Defer device matrix selection."},
+    {"category": "release", "status": "unknown", "impact": "Release target is not determined.", "mitigation": "Defer release applicability."},
+    {"category": "migration", "status": "unknown", "impact": "No migration boundary can be inferred.", "mitigation": "Defer migration analysis."}
+  ],
+  "solution_search": [
+    {"kind": "product", "query": "comparable first-use moments for the two options", "finding": "Search is not decision-making; both options remain open.", "decision": "investigate", "evidence_ref": "redacted:intent-options"}
+  ],
+  "ordered_work": [],
+  "issue_contract": {
+    "immutable": false,
+    "version": 1,
+    "contract_id": "plan-intent-unknown"
+  },
+  "issue_actions": [],
+  "source_evidence": ["redacted:user-intent-ambiguity"]
+}

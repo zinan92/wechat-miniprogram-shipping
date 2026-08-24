@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "module": "plan",
+  "mode": "new",
+  "control_outcome": "none",
+  "issue_ready": true,
+  "decision_needed": null,
+  "outcome": {
+    "statement": "Help a member find and save one useful learning note in under two minutes.",
+    "first_useful_moment": "A member can open a published note and see its saved state."
+  },
+  "acceptance_criteria": [
+    "A member can browse published notes from the home route.",
+    "A member can open one published note and see its ordered content.",
+    "A member can save and refresh the note without losing the saved state."
+  ],
+  "scope": {
+    "in": ["published note browsing", "ordered note reader", "saved state"],
+    "out": ["payments", "live streaming", "referral rewards" ]
+  },
+  "forbidden_changes": [
+    "Do not expose protected content through direct client reads.",
+    "Do not add payment or live-streaming infrastructure in V1.",
+    "Do not begin implementation before the issue contract is accepted."
+  ],
+  "complexity": {
+    "label": "M",
+    "rationale": "A reader flow crosses content, authorization, and persistence boundaries.",
+    "test_depth": "upstream-downstream"
+  },
+  "applicability": {
+    "plan": "required",
+    "build": "required",
+    "cloudbase": "required",
+    "experience": "required",
+    "device": "required",
+    "release": "required"
+  },
+  "applicability_reasons": {},
+  "risk_map": [
+    {"category": "intent", "status": "known", "impact": "The first useful moment must stay narrow.", "mitigation": "Keep the V1 outcome to one browse-open-save path."},
+    {"category": "identity", "status": "unknown", "impact": "Owner and member roles may be mis-bound.", "mitigation": "Verify role and account association in a read-only investigation."},
+    {"category": "backend", "status": "known", "impact": "Protected content must not be client-readable.", "mitigation": "Use a server-authorized page-facing service boundary."},
+    {"category": "experience", "status": "known", "impact": "Ordered content can drift between mock and target.", "mitigation": "Bind the reader contract to a versioned package receipt."},
+    {"category": "device", "status": "unknown", "impact": "Small-screen safe-area behavior is unproven.", "mitigation": "Reserve a later device acceptance matrix."},
+    {"category": "release", "status": "unknown", "impact": "Review and formal release are separate claims.", "mitigation": "Keep platform read-back as a later human gate."},
+    {"category": "migration", "status": "known", "impact": "Existing note identities may need preservation.", "mitigation": "Defer migration unless the accepted V1 outcome requires it."}
+  ],
+  "solution_search": [
+    {"kind": "repository", "query": "ordered content reader with protected member state", "finding": "Existing local reader patterns cover ordered blocks but not authorization.", "decision": "adapt", "evidence_ref": "redacted:search-reader-patterns"},
+    {"kind": "skill", "query": "WeChat Mini Program CloudBase shipping workflow", "finding": "The shipping skill provides platform and evidence boundaries.", "decision": "reuse", "evidence_ref": "redacted:shipping-skill"}
+  ],
+  "ordered_work": [
+    {
+      "story_id": "reader-vertical-slice",
+      "outcome": "A member can browse, open, and save one published note.",
+      "acceptance_criteria": [
+        "The home route lists published notes.",
+        "The reader preserves the declared content order.",
+        "The save action is server-authorized and survives refresh."
+      ],
+      "in_scope": ["reader flow", "saved state contract"],
+      "out_of_scope": ["payments", "live streaming"],
+      "forbidden_changes": ["No direct protected-content client read."],
+      "complexity": "M",
+      "issue_contract_ready": true
+    }
+  ],
+  "issue_contract": {
+    "immutable": true,
+    "version": 1,
+    "contract_id": "plan-reader-v1"
+  },
+  "issue_actions": ["prepare"],
+  "source_evidence": ["redacted:user-outcome-note"]
+}
