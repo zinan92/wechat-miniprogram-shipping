@@ -118,9 +118,51 @@ class ModuleTransitionTests(LifecycleTestCase):
     def test_project_can_stop_at_a_verified_current_target(self):
         state = self.fixture("experience-current.json")
         state = self.lifecycle.transition_evidence(state, "experience", "valid")
+        for module in ("device", "release"):
+            state["modules"][module] = {
+                "applicability": "not-applicable",
+                "activity_state": "not-applicable",
+                "evidence_state": "not-applicable",
+                "receipt_id": None,
+                "not_applicable_reason": "Target stops at experience acceptance.",
+            }
         state = self.lifecycle.transition_project(state, "target-achieved")
         self.assertEqual(state["project_state"], "target-achieved")
         self.assertEqual(state["current_module"], "experience")
+
+    def test_last_required_completion_sets_target_achieved(self):
+        state = self.fixture("experience-current.json")
+        state = self.lifecycle.transition_evidence(state, "experience", "valid")
+        for module in ("device", "release"):
+            state["modules"][module] = {
+                "applicability": "not-applicable",
+                "activity_state": "not-applicable",
+                "evidence_state": "not-applicable",
+                "receipt_id": None,
+                "not_applicable_reason": "Target stops at experience acceptance.",
+            }
+        state["modules"]["experience"]["receipt_id"] = "experience-r1"
+        state["modules"]["experience"]["activity_state"] = "current"
+        state = self.lifecycle.transition_activity(state, "experience", "completed")
+        self.assertEqual(state["project_state"], "target-achieved")
+        self.assertEqual(state["modules"]["experience"]["activity_state"], "completed")
+
+    def test_target_achieved_synchronizes_legacy_terminal_alias(self):
+        state = self.fixture("experience-current.json")
+        state["project_terminal_state"] = "none"
+        del state["project_state"]
+        state = self.lifecycle.transition_evidence(state, "experience", "valid")
+        for module in ("device", "release"):
+            state["modules"][module] = {
+                "applicability": "not-applicable",
+                "activity_state": "not-applicable",
+                "evidence_state": "not-applicable",
+                "receipt_id": None,
+                "not_applicable_reason": "Target stops at experience acceptance.",
+            }
+        state = self.lifecycle.transition_project(state, "target-achieved")
+        self.assertEqual(state["project_state"], "target-achieved")
+        self.assertNotIn("project_terminal_state", state)
 
 
 class ReceiptLifecycleTests(LifecycleTestCase):
@@ -202,6 +244,12 @@ class ReceiptLifecycleTests(LifecycleTestCase):
         self.assertEqual(result.receipts["build-r1"]["status"], "stale")
         self.assertEqual(result.receipts["build-r1"]["stale_reason"], "causal-identity-changed")
         self.assertEqual(result.receipts["experience-r1"]["status"], "stale")
+        self.assertEqual(result.receipts["experience-r1"]["stale_reason"], "causal-identity-changed")
+
+    def test_invalidation_requires_a_reason(self):
+        with self.assertRaises(self.lifecycle.LifecycleError) as raised:
+            self.lifecycle.invalidate_receipts({}, changed_fields=["source.commit_sha"], reason_code="")
+        self.assertEqual(raised.exception.code, "INVALIDATION_REASON_REQUIRED")
 
     def test_rewind_locks_downstream_without_routing_authority(self):
         state = self.fixture("experience-completed.json")

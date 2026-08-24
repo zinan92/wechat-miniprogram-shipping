@@ -25,6 +25,7 @@ RECEIPT_CONTRACT_VERSION = "ask-park.receipt/v1"
 HUMAN_GATE_CONTRACT_VERSION = "ask-park.human-gate/v1"
 
 MODULES = ("plan", "build", "cloudbase", "experience", "device", "release")
+MODULE_INDEX = {name: index for index, name in enumerate(MODULES)}
 APPLICABILITY = ("required", "not-applicable")
 ACTIVITY_STATES = ("waiting", "current", "completed", "failed", "blocked-external", "locked", "not-applicable")
 EVIDENCE_STATES = ("absent", "valid", "stale", "invalid", "not-applicable")
@@ -454,8 +455,16 @@ def validate_state(document: Any) -> ValidationResult:
         allowed_current_states = ("current", "failed", "blocked-external")
         if terminal_state == "released" and current_module == "release":
             allowed_current_states = ("completed",)
+        elif terminal_state == "target-achieved":
+            allowed_current_states = ("completed",)
         if current_record.get("applicability") == "required" and current_record.get("activity_state") not in allowed_current_states:
             errors.add("STATE_CURRENT_MODULE", "state.current_module", "current module must remain current, failed, or blocked-external")
+        if terminal_state == "target-achieved" and current_record.get("activity_state") == "completed":
+            for later in MODULES[MODULE_INDEX[current_module] + 1 :]:
+                later_record = modules.get(later)
+                if _is_mapping(later_record) and later_record.get("applicability") == "required":
+                    errors.add("STATE_TERMINAL", "state.project_terminal_state", "target-achieved requires later modules to be explicitly not-applicable")
+                    break
     active_records = [module for module in MODULES if _is_mapping(modules.get(module)) and modules[module].get("activity_state") == "current"]
     if len(active_records) > 1:
         errors.add("STATE_CURRENT_MODULE", "state.modules", "only one module may be current")

@@ -182,10 +182,13 @@ def _next_required_module(state: dict[str, Any], completed_module: str) -> str |
 def _promote_after_completion(state: dict[str, Any], completed_module: str) -> None:
     next_module = _next_required_module(state, completed_module)
     if next_module is None:
-        # Release is the only terminal sequential module.  It is completed by
-        # transition_project after the release read-back gate, so no successor
-        # is selected here.
+        # An approved target may stop at the last required module when every
+        # later module was explicitly marked not-applicable in Plan. Release
+        # remains the only formal released state.
         state["current_module"] = completed_module
+        if completed_module != "release":
+            state["project_state"] = "target-achieved"
+            state.pop("project_terminal_state", None)
         return
     for module in MODULES:
         record = state["modules"][module]
@@ -317,6 +320,7 @@ def transition_project(state: Mapping[str, Any], target: str) -> dict[str, Any]:
         _error("ILLEGAL_PROJECT_TRANSITION", f"terminal project state {current} cannot transition", "project_state")
     if target == "abandoned":
         result["project_state"] = "abandoned"
+        result.pop("project_terminal_state", None)
         # An abandoned target retains the current module as historical context.
         return result
     if target == "target-achieved":
@@ -324,7 +328,14 @@ def transition_project(state: Mapping[str, Any], target: str) -> dict[str, Any]:
         current_record = result["modules"][current_module]
         if current_record["activity_state"] not in ("current", "completed", "not-applicable") or current_record["evidence_state"] not in ("valid", "not-applicable"):
             _error("PROJECT_TARGET_EVIDENCE_REQUIRED", "target-achieved requires valid evidence for the current target module", "current_module")
+        later_required = [
+            module for module in MODULES[MODULE_INDEX[current_module] + 1 :]
+            if result["modules"][module]["applicability"] == "required"
+        ]
+        if later_required:
+            _error("PROJECT_TARGET_SCOPE_REQUIRED", "later modules must be explicitly not-applicable before target-achieved", "project_state")
         result["project_state"] = "target-achieved"
+        result.pop("project_terminal_state", None)
         # Keep the last target module current as the explicit stop point. The
         # activity axis is intentionally not auto-promoted to a successor.
         return result
@@ -338,6 +349,7 @@ def transition_project(state: Mapping[str, Any], target: str) -> dict[str, Any]:
         ):
             _error("PROJECT_RELEASE_EVIDENCE_REQUIRED", "released requires completed valid Release evidence and a read-back gate", "project_state")
         result["project_state"] = "released"
+        result.pop("project_terminal_state", None)
         result["current_module"] = "release"
         return _post_state(result)
     _error("ILLEGAL_PROJECT_TRANSITION", f"cannot move project from {current} to {target}", "project_state")
@@ -516,6 +528,8 @@ def invalidate_receipts(
             validated = _validate_receipt(receipt)
             source[validated["receipt_id"]] = validated
     changed = tuple(str(item) for item in changed_fields)
+    if not reason_code.strip():
+        _error("INVALIDATION_REASON_REQUIRED", "reason_code must be non-empty", "reason_code")
     selected: set[str] = set()
     for receipt_id, receipt in source.items():
         rules = receipt.get("invalidation_rules", {}).get("on", [])
