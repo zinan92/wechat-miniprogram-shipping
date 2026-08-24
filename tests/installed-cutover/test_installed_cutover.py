@@ -66,6 +66,9 @@ class InstalledCutoverTests(unittest.TestCase):
         self.assertEqual(receipt["repository_identity"], "zinan92/wechat-miniprogram-shipping")
         self.assertTrue(receipt["receipt_digest"].startswith("sha256:"))
         self.assertNotIn(str(ROOT), json.dumps(receipt))
+        with self.assertRaises(self.cutover.CutoverError) as raised:
+            self.cutover.operational_receipt(inventory=inventory, selector=selector, canary={"manifest_digest": "sha256:" + "a" * 64, "private_url": "https://private"}, backup_ref="/private/backup", rollback_results=rollbacks)
+        self.assertEqual(raised.exception.code, "CUTOVER_RECEIPT_REF")
 
     def test_local_cutover_rehearses_rollback_then_reapplies_canonical(self):
         with tempfile.TemporaryDirectory(prefix="installed-local-") as directory:
@@ -79,16 +82,16 @@ class InstalledCutoverTests(unittest.TestCase):
                 scanned_roots=[("synthetic-skills", skills)],
                 legacy_root=legacy,
                 canonical_root=skills / "ask-park",
-                migration_root=base / "migration-root",
+                migration_root=base / "ask-park-migration-test",
                 backup_root=base / "legacy-backup",
-                receipt_path=base / "receipt.json",
+                receipt_path=base / "receipts" / "receipt.json",
             )
             self.assertTrue(result["final_selector"]["one_canonical"])
             self.assertEqual(result["final_selector"]["legacy_enabled_count"], 0)
             self.assertTrue(result["final_canary"]["router_loaded"])
             self.assertTrue(result["legacy_backup_preserved"])
-            self.assertFalse((base / "migration-root").exists())
-            self.assertTrue((base / "receipt.json").is_file())
+            self.assertFalse((base / "ask-park-migration-test").exists())
+            self.assertTrue((base / "receipts" / "receipt.json").is_file())
 
     def test_docs_define_installed_canary_selector_and_rollback(self):
         text = (ROOT / "quality" / "installed-cutover.md").read_text(encoding="utf-8")
