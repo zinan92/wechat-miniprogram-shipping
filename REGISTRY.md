@@ -3,7 +3,9 @@
 ## 现在在哪里
 
 - Public repository: `zinan92/wechat-miniprogram-shipping`.
-- Existing published capability remains `$wechat-miniprogram-shipping`; no runtime behavior or installed-skill identity has changed yet.
+- Implemented: canonical root skill identity is `$ask-park`, with seven anchors, independent QA, migration, and cutover contracts.
+- Installed: S16C read back one enabled `$ask-park` and zero enabled `$wechat-miniprogram-shipping`; the legacy directory remains only as a recoverable backup outside scanned roots.
+- Verified: root package, clean clone, installed router/module/QA canary, selector, rollback rehearsal, and sanitized receipts all passed. This is skill/install verification, not a Mini Program production-release claim.
 - Ask Park single-entry, seven-module architecture is approved and merged in PR #5.
 - Independent Ask Park QA Gate design is approved by Park and merged in PR #7. Its three-round independent review findings were addressed; the final two schema corrections were mechanically validated after the review ceiling and remain visible in the PR record.
 - The L-level implementation plan is approved by architecture, QA/test, and packaging reviewers and merged in PR #11.
@@ -28,12 +30,13 @@
 - S15/#29 is complete in PR #72 (`b395598`): isolated synthetic-reader trial bound Browser and DevTools to one candidate/project identity, caught stale live drift, duplicate title, double safe area, stale package, and missing final compile, proved fresh repair evidence, post-automation human blocking, three-failure escalation/no-fourth, actual touched-target/side-effect receipts, and sanitized artifacts; 6/6 trial tests plus the full staged/module regression set passed. Staged validation, `py_compile`, diff-check, gitleaks, and both adversarial reviews passed.
 - S16A/#30 is complete in PR #74 (`19a7bc6`): staging-only scanned-root/symlink/realpath inventory, redacted file refs, JCS-bound canonical package manifest, verified repository/history pre-migration receipt, outside-root staging scope, private/symlink escape rejection, transactional cleanup, managed four-checkpoint rollback rehearsals, and no root/active-skill cutover; 12/12 migration tests plus the full staged/module regression set passed. Staged validation, `py_compile`, diff-check, gitleaks, and both reviews passed.
 - S16B/#31 is complete in PR #76 (`6fc11b4`): canonical Ask Park promoted to root with exactly one SKILL/metadata pair, full closure at root, staging duplicate removed, capability-first README with managed temporary clean-clone installer, closure manifest equality, full router/module/QA canary, seven-path missing-file failures, and no active local path mutation; root final layout and full regression suite passed. Final package, py_compile, diff-check, gitleaks, and both cutover reviews passed.
-- S16C/#32 is the next story to implement. Actual installed-path canary, recoverable local cutover, rollback receipt, and final public publication remain unimplemented.
+- S16C/#32 is complete in PR #78 (`1bfe3a1`): actual two-root inventory, one-canonical/zero-legacy selector read-back, installed manifest/canary equality, atomic legacy backup/canonical move, four rollback rehearsals, automatic post-apply rollback, final reapply, and sanitized operational receipt; 7/7 installed-cutover tests plus the full root regression suite passed. Final layout, `py_compile`, diff-check, gitleaks, and both reviews passed.
+- S16D/#33 is the final publication story. README, public read-back, and Registry status are being finalized now; no real Mini Program release is implied.
 
 ## 下一步
 
-1. Implement [#32 / S16C](https://github.com/zinan92/wechat-miniprogram-shipping/issues/32): installed-path canary, recoverable cutover, and rollback receipt.
-2. Merge S16C after its gates pass, update this Registry, then make the next dependency-ready story ready from the new `main`.
+1. Complete [#33 / S16D](https://github.com/zinan92/wechat-miniprogram-shipping/issues/33): final capability README and public read-back.
+2. After S16D, choose a separate human-approved real-use Mini Program trial; do not infer production readiness from this repository.
 3. Preserve hard WIP=1 and the published dependency order through #33/S16D.
 
 ## Evidence
@@ -64,4 +67,7 @@
 - [PR #72](https://github.com/zinan92/wechat-miniprogram-shipping/pull/72)
 - [PR #74](https://github.com/zinan92/wechat-miniprogram-shipping/pull/74)
 - [PR #76](https://github.com/zinan92/wechat-miniprogram-shipping/pull/76)
+- [PR #78](https://github.com/zinan92/wechat-miniprogram-shipping/pull/78)
+- [Installed cutover receipt](receipts/installed-cutover.json)
+- [Public read-back receipt](receipts/public-readback.json)
 - [Implementation Dev Queue](https://github.com/zinan92/wechat-miniprogram-shipping/issues?q=is%3Aissue%20state%3Aopen%20label%3Aenhancement)

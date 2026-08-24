@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "kind": "ask-park-public-readback",
+  "repository_identity": "zinan92/wechat-miniprogram-shipping",
+  "implementation": {
+    "state": "complete",
+    "root_identity": "ask-park",
+    "entrypoint_count": 1,
+    "metadata_count": 1,
+    "staging_duplicate": false
+  },
+  "installed": {
+    "canonical_identity": "ask-park",
+    "legacy_identity": "deprecated-disabled",
+    "selector_ask_park_enabled_count": 1,
+    "selector_legacy_enabled_count": 0,
+    "installed_manifest_digest": "sha256:65fbeb18bd6e86400809797ccc6ada1c932a3468c9d22dfafe906c262e12470d",
+    "installed_cutover_receipt_digest": "sha256:c5e8a81014d4aa3bee81dcb37feb10f3545a02b376909a513b3dcdab8a0e20ff"
+  },
+  "verified": {
+    "clean_clone": "pass",
+    "router_canary": "pass",
+    "module_contract_canary": "pass",
+    "qa_load_canary": "pass",
+    "missing_file_failure": "pass",
+    "full_regression": "pass",
+    "gitleaks": "pass",
+    "diff_check": "pass"
+  },
+  "limitations": [
+    "This is a skill/install read-back, not a claim that any Mini Program, CloudBase environment, payment, review, or production release is complete."
+  ],
+  "next_real_use_trial": "A separately scoped, human-approved non-production Mini Program task."
+}
