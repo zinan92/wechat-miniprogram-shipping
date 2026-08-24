@@ -135,6 +135,8 @@ def _validate_gate(gate: Any) -> dict[str, Any]:
     if boundary_errors.errors:
         first = boundary_errors.errors[0]
         _error("HUMAN_GATE_INVALID", f"human gate does not satisfy S01 ({first.code})", first.path)
+    if "authority_basis" in gate and gate.get("authority_basis") is not None and not _has_explicit_human_authority(gate.get("authority_basis")):
+        _error("HUMAN_AUTHORIZATION_REQUIRED", "technical access never constitutes authorization", "human_gate.authority_basis")
     if "gate_id" in gate:
         result = _VALIDATOR.validate_human_gate(gate)
         if not result.valid:
@@ -177,7 +179,7 @@ def _has_explicit_human_authority(value: Any) -> bool:
 
 def _module_record(state: dict[str, Any], module: str) -> dict[str, Any]:
     if module not in MODULES:
-        _error("UNKNOWN_MODULE", "module is not a sequential module", f"modules.{module}")
+        _error("UNKNOWN_MODULE", "module is not a sequential module", "modules.<module>")
     record = state["modules"].get(module)
     if not isinstance(record, dict):
         _error("STATE_INVALID", "module state is not an object", f"modules.{module}")
@@ -573,7 +575,10 @@ def invalidate_receipts(
         source = {}
         for receipt in receipts:
             validated = _validate_receipt(receipt)
-            source[validated["receipt_id"]] = validated
+            receipt_id = validated["receipt_id"]
+            if receipt_id in source:
+                _error("RECEIPT_ID_DUPLICATE", "receipt iterable contains a duplicate receipt_id", "receipts.<receipt_id>")
+            source[receipt_id] = validated
     changed = tuple(str(item) for item in changed_fields)
     selected: set[str] = set()
     for receipt_id, receipt in source.items():
@@ -735,6 +740,8 @@ def prepare_human_gate(
         slug = re.sub(r"[^A-Za-z0-9._:-]+", "-", f"{action_type}-{action_scope}").strip("-")
         prepared["gate_id"] = f"gate-{slug}"
     if authority_basis is not None:
+        if not _has_explicit_human_authority(authority_basis):
+            _error("HUMAN_AUTHORIZATION_REQUIRED", "technical access never constitutes authorization", "human_gate.authority_basis")
         prepared["authority_basis"] = authority_basis
     _validate_gate(prepared)
     return prepared

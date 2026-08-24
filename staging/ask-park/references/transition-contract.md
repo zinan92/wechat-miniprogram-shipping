@@ -27,7 +27,7 @@ never copied into an error. Representative codes are:
 | `PROJECT_RELEASE_EVIDENCE_REQUIRED` | Release completion lacks valid Release evidence, a receipt, or a read-back human gate |
 | `RECEIPT_NOT_ISSUABLE` | Receipt is stale/invalid rather than an issuable observation |
 | `PREDECESSOR_RECEIPT_MISSING` / `PREDECESSOR_RECEIPT_INVALID` | Causal predecessor chain is incomplete or unusable |
-| `PREDECESSOR_ORDER_INVALID` / `RECEIPT_ID_MISMATCH` | A predecessor is not an earlier sequential module or an external receipt alias does not match its payload |
+| `PREDECESSOR_ORDER_INVALID` / `RECEIPT_ID_MISMATCH` / `RECEIPT_ID_DUPLICATE` | A predecessor is not an earlier sequential module, an external receipt alias does not match its payload, or an iterable repeats an ID |
 | `RECEIPT_REUSE_INVALIDATED` | A declared causal invalidation trigger changed |
 | `INVALIDATION_REASON_REQUIRED` | A causal invalidation reason is missing or not a safe alias |
 | `HUMAN_GATE_INVALID` | A prepared gate does not satisfy the S01 gate shape or persistence boundary |

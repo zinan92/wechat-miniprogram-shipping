@@ -97,6 +97,14 @@ class ModuleTransitionTests(LifecycleTestCase):
             state,
         )
 
+    def test_unknown_module_errors_do_not_echo_private_input(self):
+        state = self.fixture("experience-current.json")
+        with self.assertRaises(self.lifecycle.LifecycleError) as raised:
+            self.lifecycle.transition_activity(state, "https://secret.example/x", "current")
+        self.assertEqual(raised.exception.code, "UNKNOWN_MODULE")
+        self.assertEqual(raised.exception.path, "modules.<module>")
+        self.assertNotIn("secret.example", str(raised.exception))
+
     def test_evidence_cannot_be_removed_from_a_completed_module(self):
         state = self.fixture("experience-current.json")
         state["modules"]["experience"]["activity_state"] = "completed"
@@ -307,6 +315,12 @@ class ReceiptLifecycleTests(LifecycleTestCase):
             self.lifecycle.invalidate_receipts({"wrong-key": receipt}, changed_fields=["source.commit_sha"])
         self.assertEqual(raised.exception.code, "RECEIPT_ID_MISMATCH")
 
+    def test_invalidation_rejects_duplicate_iterable_receipt_ids(self):
+        receipt = self.fixture("valid-build-receipt.json")
+        with self.assertRaises(self.lifecycle.LifecycleError) as raised:
+            self.lifecycle.invalidate_receipts([receipt, copy.deepcopy(receipt)], changed_fields=["source.commit_sha"])
+        self.assertEqual(raised.exception.code, "RECEIPT_ID_DUPLICATE")
+
     def test_invalidation_reason_is_safe(self):
         with self.assertRaises(self.lifecycle.LifecycleError) as raised:
             self.lifecycle.invalidate_receipts({}, changed_fields=["source.commit_sha"], reason_code="/private/path")
@@ -363,6 +377,18 @@ class HumanGateLifecycleTests(LifecycleTestCase):
             )
         self.assertEqual(raised.exception.code, "HUMAN_GATE_INVALID")
 
+        with self.assertRaises(self.lifecycle.LifecycleError) as raised:
+            self.lifecycle.prepare_human_gate(
+                self.fixture("new-human-gate.json"),
+                action_type="upload-experience",
+                action_scope="experience-v1",
+                authorizing_role="owner",
+                requested_at="2026-08-24T10:00:00Z",
+                evidence_ref="redacted:gate",
+                authority_basis="private-token",
+            )
+        self.assertEqual(raised.exception.code, "HUMAN_AUTHORIZATION_REQUIRED")
+
         for private_scope, private_role in (
             ("https://private.example/x", "owner"),
             ("experience-v1", "/Users/wendy/private"),
@@ -403,6 +429,14 @@ class HumanGateLifecycleTests(LifecycleTestCase):
             gate,
             authorized_at="2026-08-24T10:01:00Z",
             authority_basis="private-token",
+        )
+        token_gate = self.fixture("awaiting-human-gate.json")
+        token_gate["authority_basis"] = "private-token"
+        self.assertCode(
+            "HUMAN_AUTHORIZATION_REQUIRED",
+            self.lifecycle.transition_human_gate,
+            token_gate,
+            "denied",
         )
         denied = self.lifecycle.transition_human_gate(gate, "denied")
         self.assertCode("ILLEGAL_HUMAN_GATE_TRANSITION", self.lifecycle.transition_human_gate, denied, "authorized")
