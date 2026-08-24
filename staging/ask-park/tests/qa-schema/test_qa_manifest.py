@@ -39,6 +39,12 @@ class QAManifestContractTests(unittest.TestCase):
         self.assertEqual(result.document["digest"], self.validator.canonical_digest(candidate))
         self.assertEqual(candidate["target_manifest_digest"], None)
         self.assertTrue(candidate["candidate"]["source_sha"].startswith("sha256:"))
+        candidate_extra = copy.deepcopy(candidate)
+        candidate_extra["candidate"]["unmodeled"] = "x"
+        candidate_extra["digest"] = self.validator.canonical_digest(candidate_extra)
+        invalid = self.validator.validate_document(candidate_extra, "candidate")
+        self.assertFalse(invalid.valid)
+        self.assertIn("QA_UNKNOWN_FIELD", {error.code for error in invalid.errors})
 
     def test_target_manifest_references_candidate_and_post_target_result_binds_both(self):
         candidate = self.fixture("candidate-valid.json")
@@ -52,6 +58,12 @@ class QAManifestContractTests(unittest.TestCase):
         self.assertEqual(target["candidate_manifest_digest"], candidate["digest"])
         self.assertIsNone(qa1["target_manifest_digest"])
         self.assertEqual(qa2["target_manifest_digest"], target["digest"])
+        target_extra = copy.deepcopy(target)
+        target_extra["target"]["unmodeled"] = "x"
+        target_extra["digest"] = self.validator.canonical_digest(target_extra)
+        invalid = self.validator.validate_document(target_extra, "target")
+        self.assertFalse(invalid.valid)
+        self.assertIn("QA_UNKNOWN_FIELD", {error.code for error in invalid.errors})
         qa1_with_target = copy.deepcopy(qa1)
         qa1_with_target["target_receipt_id"] = "experience-r1"
         qa1_with_target["digest"] = self.validator.canonical_digest(qa1_with_target)
@@ -81,6 +93,16 @@ class QAManifestContractTests(unittest.TestCase):
         codes = {error.code for error in result.errors}
         self.assertIn("QA_UNKNOWN_FIELD", codes)
         self.assertIn("QA_AFTER", codes)
+        enum_bad = copy.deepcopy(row)
+        enum_bad["surface"] = "unknown"
+        enum_bad["role"] = "root"
+        enum_bad["route"] = "not an alias"
+        result = self.validator.validate_document(enum_bad, "evidence")
+        self.assertFalse(result.valid)
+        codes = {error.code for error in result.errors}
+        self.assertIn("QA_SURFACE", codes)
+        self.assertIn("QA_ROLE", codes)
+        self.assertIn("QA_ALIAS", codes)
 
     def test_historical_before_exception_does_not_excuse_missing_after(self):
         row = self.fixture("evidence-row-valid.json")

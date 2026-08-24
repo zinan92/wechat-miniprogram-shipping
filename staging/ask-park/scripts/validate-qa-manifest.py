@@ -25,6 +25,8 @@ REDacted_RE = re.compile(r"^redacted:[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 ISO_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$")
 EVIDENCE_MODES = {"sanitized-persisted", "ephemeral-only", "approved-store-reference"}
 MODULES = {"plan", "build", "cloudbase", "experience", "device", "release"}
+EVIDENCE_SURFACES = {"web-browser", "live-browser", "devtools-simulator", "physical-device", "projection"}
+EVIDENCE_ROLES = {"admin", "member", "guest"}
 FORBIDDEN_KEY_PARTS = ("openid", "payment", "qr", "credential", "secret", "token", "password", "filename", "bytes", "private_key", "access_key", "api_key", "cookie", "environment_id", "env_id", "appid", "url", "uri", "target_url")
 
 
@@ -203,6 +205,10 @@ def validate_candidate(document: Any) -> ValidationResult:
         if not isinstance(candidate, dict):
             errors.add("QA_CANDIDATE", "manifest.candidate", "candidate must be an object")
         else:
+            allowed_candidate_keys = {"source_sha", "lockfile_digest", "build_config_digest", "build_artifact_digest", "native_project_config_digest", "runtime_config_digest", "package_digest"}
+            for key in candidate:
+                if key not in allowed_candidate_keys:
+                    errors.add("QA_UNKNOWN_FIELD", "manifest.candidate.<key>", "field is not in the candidate schema")
             if not _is_digest(candidate.get("source_sha")):
                 errors.add("QA_SOURCE_SHA", "manifest.candidate.source_sha", "source SHA must be a full digest")
             for key in ("lockfile_digest", "build_config_digest", "build_artifact_digest", "native_project_config_digest", "runtime_config_digest"):
@@ -225,6 +231,10 @@ def validate_target(document: Any) -> ValidationResult:
         if not isinstance(target, dict):
             errors.add("QA_TARGET", "manifest.target", "target must be an object")
         else:
+            allowed_target_keys = {"target_alias", "deployment_receipt_id", "environment_contract_alias", "platform_version", "upload_note", "live_index_digest", "asset_digests"}
+            for key in target:
+                if key not in allowed_target_keys:
+                    errors.add("QA_UNKNOWN_FIELD", "manifest.target.<key>", "field is not in the target schema")
             for key in ("target_alias", "deployment_receipt_id", "environment_contract_alias", "platform_version"):
                 if not _is_alias(target.get(key)):
                     errors.add("QA_ALIAS", f"manifest.target.{key}", "target field must be a stable alias")
@@ -297,8 +307,15 @@ def validate_evidence(document: Any) -> ValidationResult:
     for key in ("surface", "route", "viewport", "role", "data_state"):
         if not isinstance(document.get(key), str) or not document[key].strip():
             errors.add("QA_EVIDENCE_FIELD", f"evidence.{key}", "evidence field must be non-empty")
+    if document.get("surface") not in EVIDENCE_SURFACES:
+        errors.add("QA_SURFACE", "evidence.surface", "surface is outside the evidence enum")
+    if document.get("role") not in EVIDENCE_ROLES:
+        errors.add("QA_ROLE", "evidence.role", "role is outside the evidence enum")
     if document.get("equivalence") not in {"exact", "approved-reference", "historical-exception"}:
         errors.add("QA_EQUIVALENCE", "evidence.equivalence", "equivalence is invalid")
+    for key in ("route", "viewport", "data_state"):
+        if not _is_alias(document.get(key)):
+            errors.add("QA_ALIAS", f"evidence.{key}", "evidence identity must be a stable alias")
     tool = document.get("tool")
     if not isinstance(tool, dict) or not all(isinstance(tool.get(key), str) and tool.get(key) for key in ("name", "version", "runtime_or_base_library")):
         errors.add("QA_TOOL", "evidence.tool", "tool/runtime identity is required")
