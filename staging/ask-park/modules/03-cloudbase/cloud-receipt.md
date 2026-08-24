@@ -58,7 +58,6 @@ receipt:
   status: valid | invalid | not-applicable
   predecessor_receipt_ids: [Build receipt alias]
 unproven_claims: [explicit limitations]
-routing: continue | diagnose | blocked-external
 ```
 
 ## Rules
