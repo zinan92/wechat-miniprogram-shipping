@@ -174,7 +174,7 @@ def stage_canonical_install(source_root: Path, staging_parent: Path, *, scanned_
     if errors:
         _fail("MIGRATION_CANONICAL_VALIDATION", "staged package failed canonical validation", "staging")
     manifest = package_manifest(destination)
-    return {"checkpoint": "staged", "staging_ref": "redacted:ask-park-staging", "manifest": manifest, "rollback_safe": True}
+    return {"checkpoint": "staged", "staging_ref": "redacted:ask-park-staging", "manifest": manifest, "rollback_safe": True, "scope_verified": scanned_roots is not None}
 
 
 def pre_migration_receipt(inventory: Mapping[str, Any], staged: Mapping[str, Any], *, repository_identity: str, history_ref: str) -> dict[str, Any]:
@@ -182,7 +182,7 @@ def pre_migration_receipt(inventory: Mapping[str, Any], staged: Mapping[str, Any
         _fail("MIGRATION_REPOSITORY_ID", "repository identity must remain zinan92/wechat-miniprogram-shipping and history must be an alias", "repository")
     if not isinstance(inventory, Mapping) or inventory.get("kind") != "skill-inventory":
         _fail("MIGRATION_INVENTORY_REQUIRED", "pre-migration receipt requires a validated inventory", "inventory")
-    if not isinstance(staged, Mapping) or staged.get("checkpoint") != "staged":
+    if not isinstance(staged, Mapping) or staged.get("checkpoint") != "staged" or staged.get("scope_verified") is not True:
         _fail("MIGRATION_STAGED_REQUIRED", "pre-migration receipt requires a staged package", "staged")
     manifest = staged.get("manifest")
     if not isinstance(manifest, Mapping) or manifest.get("kind") != "ask-park-staged-manifest" or not _digest(manifest.get("package_digest")) or not _digest(manifest.get("manifest_digest")):

@@ -77,7 +77,7 @@ class MigrationTests(unittest.TestCase):
 
     def test_pre_migration_receipt_rejects_noncanonical_identity_and_manifest(self):
         with tempfile.TemporaryDirectory(prefix="migration-receipt-") as directory:
-            staged = self.migration.stage_canonical_install(SOURCE, Path(directory))
+            staged = self.migration.stage_canonical_install(SOURCE, Path(directory), scanned_roots=[])
             inventory = self.migration.inventory_roots([{"root_alias": "source", "path": str(SOURCE), "enabled": True}])
             with self.assertRaises(self.migration.MigrationError) as raised:
                 self.migration.pre_migration_receipt(inventory, staged, repository_identity="evil-repo", history_ref="fake-history")
