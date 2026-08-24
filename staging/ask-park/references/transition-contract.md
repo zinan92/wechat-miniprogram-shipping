@@ -19,6 +19,7 @@ never copied into an error. Representative codes are:
 | `ILLEGAL_ACTIVITY_TRANSITION` | Module activity edge is not in the legal graph |
 | `ILLEGAL_EVIDENCE_TRANSITION` | Evidence edge is not in the legal graph |
 | `CURRENT_MODULE_REQUIRED` | A module cannot become current before its required predecessors |
+| `PREDECESSOR_COMPLETION_REQUIRED` | A module cannot complete until every earlier required module has valid completed evidence |
 | `COMPLETION_EVIDENCE_REQUIRED` | Completion lacks valid evidence |
 | `ILLEGAL_DIAGNOSE_TRANSITION` | Diagnose state/outcome edge is not legal |
 | `DIAGNOSE_MODULE_MISMATCH` | An active Diagnose overlay does not match `current_module` |

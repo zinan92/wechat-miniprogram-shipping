@@ -65,6 +65,19 @@ class ModuleTransitionTests(LifecycleTestCase):
             "current",
         )
 
+    def test_module_completion_requires_completed_predecessors(self):
+        state = self.fixture("experience-current.json")
+        state["modules"]["cloudbase"]["activity_state"] = "waiting"
+        state["modules"]["cloudbase"]["evidence_state"] = "absent"
+        state = self.lifecycle.transition_evidence(state, "experience", "valid")
+        self.assertCode(
+            "PREDECESSOR_COMPLETION_REQUIRED",
+            self.lifecycle.transition_activity,
+            state,
+            "experience",
+            "completed",
+        )
+
     def test_terminal_project_state_freezes_module_and_diagnose_axes(self):
         state = self.fixture("experience-current.json")
         state["project_state"] = "abandoned"
@@ -479,6 +492,16 @@ class HumanGateLifecycleTests(LifecycleTestCase):
             self.lifecycle.transition_human_gate,
             token_gate,
             "denied",
+        )
+        missing_basis = self.fixture("awaiting-human-gate.json")
+        missing_basis["state"] = "authorized"
+        missing_basis["authorized_at"] = "2026-08-24T10:01:00Z"
+        missing_basis.pop("authority_basis")
+        self.assertCode(
+            "HUMAN_AUTHORIZATION_REQUIRED",
+            self.lifecycle.transition_human_gate,
+            missing_basis,
+            "executed",
         )
         denied = self.lifecycle.transition_human_gate(gate, "denied")
         self.assertCode("ILLEGAL_HUMAN_GATE_TRANSITION", self.lifecycle.transition_human_gate, denied, "authorized")

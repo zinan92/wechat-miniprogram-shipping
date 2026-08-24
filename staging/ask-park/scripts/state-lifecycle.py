@@ -323,6 +323,8 @@ def transition_activity(state: Mapping[str, Any], module: str, target: str) -> d
     if target == "completed":
         if result["diagnose"]["state"] == "active":
             _error("DIAGNOSE_ACTIVE", "an active Diagnose overlay must recover before module completion", "diagnose.state")
+        if not _required_predecessors_satisfied(result, module):
+            _error("PREDECESSOR_COMPLETION_REQUIRED", "module completion requires every earlier required module to be completed with valid evidence", f"modules.{module}")
         if record["evidence_state"] != "valid":
             _error("COMPLETION_EVIDENCE_REQUIRED", "module completion requires valid evidence", f"modules.{module}.evidence_state")
         if module == "release":
@@ -772,6 +774,8 @@ def transition_human_gate(gate: Mapping[str, Any], target: str) -> dict[str, Any
     }
     if target not in HUMAN_GATE_STATES or target not in legal.get(current, set()):
         _error("ILLEGAL_HUMAN_GATE_TRANSITION", f"cannot move human gate from {current} to {target}", "human_gate.state")
+    if current in ("authorized", "executed", "read-back") and not _has_explicit_human_authority(current_gate.get("authority_basis")):
+        _error("HUMAN_AUTHORIZATION_REQUIRED", "authorized gate transitions require an explicit authority basis", "human_gate.authority_basis")
     current_gate["state"] = target
     if target == "executed" and not _VALIDATOR._is_iso(current_gate.get("authorized_at")):
         _error("HUMAN_AUTHORIZATION_REQUIRED", "executed requires an authorized gate", "human_gate.authorized_at")
