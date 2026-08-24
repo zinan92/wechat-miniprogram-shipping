@@ -1,0 +1,7 @@
+{
+  "action_type": "physical-device-observation",
+  "action_scope": "device-v1",
+  "authorizing_role": "owner",
+  "requested_at": "2026-08-24T15:30:00Z",
+  "evidence_ref": "redacted:device-gate"
+}
