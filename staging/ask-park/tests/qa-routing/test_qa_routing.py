@@ -129,6 +129,22 @@ class QARoutingTests(unittest.TestCase):
         self.assertEqual(result["state"]["diagnose"]["state"], "standby")
         self.assertEqual(result["state"]["human_gate"]["state"], "awaiting-human")
         self.assertEqual(result["control_outcome"], "blocked-external")
+        self.assertEqual(result["state"]["control_outcome"], "blocked-external")
+
+        active = self.state("experience-completed.json")
+        active["diagnose"] = {
+            "state": "active",
+            "outcome": "none",
+            "interrupted_module": "device",
+            "recovery_goal": "recheck device evidence",
+        }
+        self.assertCode(
+            "QA_HUMAN_GATE_DIAGNOSE_ACTIVE",
+            self.routing.route_qa_result,
+            active,
+            packet,
+            gate_request=request,
+        )
 
     def test_human_gate_cannot_hide_a_qa_defect(self):
         packet = self.packet("blocked-packet.json")

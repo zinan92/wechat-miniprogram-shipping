@@ -192,6 +192,8 @@ def request_human_gate(
 
     checked_state = _state(state)
     checked_packet = _packet(packet)
+    if checked_state["diagnose"]["state"] == "active":
+        _fail("QA_HUMAN_GATE_DIAGNOSE_ACTIVE", "a human-only gate cannot bypass an active Diagnose overlay", "state.diagnose")
     if checked_packet["verdict"] != "QA_BLOCKED" or checked_packet["automation_passed"] is not True or checked_packet["human_gate_required"] is not True:
         _fail("QA_HUMAN_GATE_NOT_ALLOWED", "only an automated-pass QA_BLOCKED packet may request a human gate", "packet")
     if checked_packet["findings"]:
@@ -205,6 +207,7 @@ def request_human_gate(
         _fail("QA_HUMAN_GATE_INVALID", "human gate request failed the S01 contract", "gate_request")
     next_state = copy.deepcopy(checked_state)
     next_state["human_gate"] = prepared
+    next_state["control_outcome"] = "blocked-external"
     next_state = _state(next_state)
     decision = _ROUTER.route(next_state, "continuation", authority_required=True)
     return {
