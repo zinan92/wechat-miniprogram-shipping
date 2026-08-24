@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "module": "device",
+  "status": "verified-device",
+  "experience_receipt_id": "experience-r1",
+  "experience_version_alias": "experience-v1",
+  "matrix": [
+    {"device_class": "ios", "device_profile": "redacted:iphone-profile", "role": "member", "task": "read-and-save", "experience_version_alias": "experience-v1", "result": "pass", "observed_at": "2026-08-24T13:30:00Z"},
+    {"device_class": "android", "device_profile": "redacted:android-profile", "role": "member", "task": "read-and-save", "experience_version_alias": "experience-v1", "result": "pass", "observed_at": "2026-08-24T13:31:00Z"},
+    {"device_class": "ios", "device_profile": "redacted:iphone-profile", "role": "admin", "task": "protected-content-check", "experience_version_alias": "experience-v1", "result": "pass", "observed_at": "2026-08-24T13:32:00Z"},
+    {"device_class": "android", "device_profile": "redacted:android-profile", "role": "admin", "task": "protected-content-check", "experience_version_alias": "experience-v1", "result": "pass", "observed_at": "2026-08-24T13:33:00Z"}
+  ],
+  "evidence_ladder": {
+    "projection": {"result": "pass", "proves": "Member read state projection is correct.", "cannot_prove": "It does not prove device pixels."},
+    "http-reachability": {"result": "pass", "proves": "The authorized client request reaches the service.", "cannot_prove": "It does not prove authorization or layout."},
+    "pixels-layout": {"result": "pass", "proves": "The recorded matrix routes render on the observed devices.", "cannot_prove": "It does not prove other devices or accounts."},
+    "expiry-fallback": {"result": "pass", "proves": "Expiry and retry behavior match the accepted contract.", "cannot_prove": "It does not prove unrelated routes."}
+  },
+  "weak_network": {"retry_policy": "one bounded retry then stable error", "expiry_policy": "expired asset fails closed and requests refresh"},
+  "client_logs": [{"source": "client", "request_id": "redacted:req-1", "evidence_ref": "redacted:client-log-1"}],
+  "attributed_client_events": ["redacted:req-1"],
+  "client_log_summary": {"excluded_sources": ["cli", "server"]},
+  "human_gate": {"required": false, "ref": null},
+  "unproven_claims": ["Formal Release, payment, and unobserved devices remain unproven."],
+  "receipt": {
+    "receipt_id": "device-r1",
+    "receipt_type": "module",
+    "schema_version": 1,
+    "contract_version": "ask-park.receipt/v1",
+    "module": "device",
+    "status": "valid",
+    "applicability": "required",
+    "source": {"repository_alias": "reader-project", "commit_sha": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"},
+    "issue": {"id": "reader-vertical-slice"},
+    "predecessor_receipt_ids": ["experience-r1"],
+    "artifact": {"kind": "device-observation", "alias": "device-matrix-v1", "digest": "sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"},
+    "package": {"kind": "experience-package", "alias": "experience-v1", "digest": "sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"},
+    "target": {"alias": "device-matrix-v1", "environment_contract_alias": "experience-v1", "redacted_ref": "redacted:device-observation"},
+    "invalidation_rules": {"on": ["source.commit_sha", "contract_version", "artifact.digest", "package.digest", "target.environment_contract_alias"], "downstream_modules": ["release"], "causal_rewind": false, "declared_by": "ask-park"},
+    "issued_at": "2026-08-24T13:34:00Z",
+    "evidence_refs": ["redacted:device-matrix"]
+  }
+}
