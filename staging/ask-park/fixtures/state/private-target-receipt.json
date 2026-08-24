@@ -1,0 +1,41 @@
+{
+  "receipt_id": "private-r1",
+  "receipt_type": "module",
+  "schema_version": 1,
+  "contract_version": "ask-park.receipt/v1",
+  "module": "cloudbase",
+  "status": "valid",
+  "applicability": "required",
+  "source": {
+    "repository_alias": "wechat-project",
+    "commit_sha": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "issue": {
+    "id": "13"
+  },
+  "predecessor_receipt_ids": ["build-r1"],
+  "artifact": {
+    "kind": "deployment",
+    "alias": "cloudbase-deployment",
+    "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "package": {
+    "kind": "production-package",
+    "alias": "cloudbase-package",
+    "digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "target": {
+    "alias": "park-cloud",
+    "url": "https://private.example.invalid/env/private-id",
+    "redacted_ref": "redacted:cloud-environment",
+    "secret_field": "fixture-value"
+  },
+  "invalidation_rules": {
+    "on": ["source.commit_sha", "contract_version", "artifact.digest", "package.digest"],
+    "downstream_modules": ["experience", "device", "release"],
+    "causal_rewind": false,
+    "declared_by": "ask-park"
+  },
+  "issued_at": "2026-08-24T10:00:00Z",
+  "evidence_refs": ["redacted:cloud-health"]
+}

@@ -1,0 +1,13 @@
+{
+  "gate_id": "gate-experience-upload-r1",
+  "schema_version": 1,
+  "contract_version": "ask-park.human-gate/v1",
+  "state": "authorized",
+  "action_type": "upload-experience",
+  "action_scope": "park-experience-v1",
+  "authorizing_role": "owner",
+  "requested_at": "2026-08-24T10:00:00Z",
+  "authorized_at": "2026-08-24T10:05:00Z",
+  "evidence_ref": "redacted:experience-upload-gate",
+  "authority_basis": "authenticated-cli-access"
+}

@@ -1,0 +1,27 @@
+{
+  "receipt_id": "broken-r1",
+  "receipt_type": "module",
+  "schema_version": 1,
+  "contract_version": "ask-park.receipt/v1",
+  "module": "build",
+  "status": "valid",
+  "applicability": "required",
+  "issue": {
+    "id": "13"
+  },
+  "predecessor_receipt_ids": [],
+  "artifact": {
+    "kind": "software",
+    "alias": "broken"
+  },
+  "package": {
+    "kind": "source-tree",
+    "alias": "broken"
+  },
+  "target": {
+    "alias": "local",
+    "environment_contract_alias": "local-mock",
+    "redacted_ref": "redacted:local-target"
+  },
+  "next_module": "cloudbase"
+}

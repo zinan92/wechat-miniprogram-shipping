@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "contract_version": "ask-park.state/v1",
+  "project_id": "wechat-mvp",
+  "project_state": "active",
+  "current_module": "experience",
+  "control_outcome": "none",
+  "modules": {
+    "plan": {
+      "applicability": "required",
+      "activity_state": "completed",
+      "evidence_state": "valid",
+      "receipt_id": "plan-r1"
+    },
+    "build": {
+      "applicability": "required",
+      "activity_state": "completed",
+      "evidence_state": "stale",
+      "receipt_id": "build-r1"
+    },
+    "cloudbase": {
+      "applicability": "required",
+      "activity_state": "completed",
+      "evidence_state": "valid",
+      "receipt_id": "cloudbase-r1"
+    },
+    "experience": {
+      "applicability": "required",
+      "activity_state": "current",
+      "evidence_state": "absent",
+      "receipt_id": null
+    },
+    "device": {
+      "applicability": "required",
+      "activity_state": "locked",
+      "evidence_state": "absent",
+      "receipt_id": null
+    },
+    "release": {
+      "applicability": "required",
+      "activity_state": "locked",
+      "evidence_state": "absent",
+      "receipt_id": null
+    }
+  },
+  "diagnose": {
+    "state": "standby",
+    "outcome": "none",
+    "interrupted_module": null,
+    "recovery_goal": null
+  },
+  "human_gate": {
+    "state": "not-needed",
+    "action_scope": null,
+    "authorizing_role": null,
+    "requested_at": null,
+    "authorized_at": null,
+    "evidence_ref": null
+  },
+  "rewind": {
+    "active": false,
+    "earliest_invalidated_module": null,
+    "reason_code": null,
+    "invalidated_receipt_ids": []
+  }
+}

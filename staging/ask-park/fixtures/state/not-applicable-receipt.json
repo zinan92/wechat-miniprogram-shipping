@@ -1,0 +1,39 @@
+{
+  "receipt_id": "cloudbase-na-r1",
+  "receipt_type": "module",
+  "schema_version": 1,
+  "contract_version": "ask-park.receipt/v1",
+  "module": "cloudbase",
+  "status": "not-applicable",
+  "applicability": "not-applicable",
+  "not_applicable_reason": "Approved target has no backend or protected data.",
+  "source": {
+    "repository_alias": "frontend-only-demo",
+    "commit_sha": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "issue": {
+    "id": "13"
+  },
+  "predecessor_receipt_ids": ["build-r1"],
+  "artifact": {
+    "state": "not-applicable",
+    "reason": "No backend artifact is in target."
+  },
+  "package": {
+    "state": "not-applicable",
+    "reason": "No backend package is in target."
+  },
+  "target": {
+    "state": "not-applicable",
+    "alias": "backend",
+    "redacted_ref": "redacted:not-applicable"
+  },
+  "invalidation_rules": {
+    "on": ["contract_version", "acceptance_scope"],
+    "downstream_modules": ["experience", "device", "release"],
+    "causal_rewind": false,
+    "declared_by": "ask-park"
+  },
+  "issued_at": "2026-08-24T10:00:00Z",
+  "evidence_refs": ["redacted:architecture-decision"]
+}
