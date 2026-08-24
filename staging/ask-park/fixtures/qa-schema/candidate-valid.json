@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "kind": "qa-candidate",
+  "digest": "sha256:286d520fe3ffb7baa3d3024681fa94f93b891cd0153413141854da1d51928395",
+  "qa_run_id": "qa-reader-attempt-1",
+  "issue_contract_id": "reader-vertical-slice",
+  "issue_contract_version": 1,
+  "origin_module": "build",
+  "target_manifest_digest": null,
+  "evidence_mode": "sanitized-persisted",
+  "evidence_refs": ["redacted:qa1-candidate"],
+  "candidate": {
+    "source_sha": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "lockfile_digest": "sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+    "build_config_digest": "sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+    "build_artifact_digest": "sha256:fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210",
+    "native_project_config_digest": null,
+    "runtime_config_digest": "sha256:0abcdef1234567890abcdef1234567890abcdef1234567890abcdef123456789",
+    "package_digest": "sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
+  },
+  "predecessor_receipt_ids": ["build-r1"],
+  "qa1_evidence_hashes": ["sha256:1111111111111111111111111111111111111111111111111111111111111111"]
+}
