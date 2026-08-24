@@ -7,4 +7,6 @@
   "deep_links": true,
   "spa_fallback": true,
   "mock_marker": false
+  ,"matrix_identity_alias": "candidate-v1",
+  "compile_provenance": "compile-v1"
 }

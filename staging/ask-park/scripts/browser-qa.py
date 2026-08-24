@@ -4,12 +4,18 @@
 from __future__ import annotations
 
 import copy
+import hashlib
+import json
 import re
+import threading
+import urllib.request
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from contextlib import contextmanager
 from typing import Any, Mapping
 
 
 SHA_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
-ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$")
+ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 REQUIRED_STATES = {"loading", "empty", "error", "locked", "long-title", "narrow-screen", "accessibility-name", "tap-target"}
 
 
@@ -32,9 +38,18 @@ def _alias(value: Any) -> bool:
     return isinstance(value, str) and bool(ID_RE.fullmatch(value))
 
 
+def _safe_text(value: Any) -> bool:
+    return isinstance(value, str) and not value.startswith(("http://", "https://", "file://", "cloud://", "/Users/", "/private/", "~/"))
+
+
 def validate_site(site: Mapping[str, Any], *, target: bool = False) -> dict[str, Any]:
     if not isinstance(site, Mapping):
         _fail("BROWSER_SITE_TYPE", "raw site record must be an object", "site")
+    allowed = {"source_sha", "index_digest", "js_digest", "css_digest", "auth_mode", "deep_links", "spa_fallback", "mock_marker"} | ({"target_alias"} if target else set()) | {"matrix_identity_alias", "compile_provenance"}
+    if any(key not in allowed for key in site):
+        _fail("BROWSER_SITE_UNKNOWN_FIELD", "raw site contains an undeclared field", "site.<key>")
+    if not all(_safe_text(value) for value in site.values() if isinstance(value, str)):
+        _fail("BROWSER_SITE_PRIVATE", "raw site contains a private target value", "site")
     for key in ("source_sha", "index_digest", "js_digest", "css_digest", "auth_mode", "deep_links", "spa_fallback", "mock_marker"):
         if key not in site:
             _fail("BROWSER_SITE_REQUIRED", "raw site field is required", f"site.{key}")
@@ -92,8 +107,69 @@ def compare_candidate_target(candidate: Mapping[str, Any], target: Mapping[str, 
         findings.append("target SPA fallback is broken")
     if target_site["mock_marker"] is not False:
         findings.append("target contains a mock marker")
+    expected_source = candidate_site.get("matrix_identity_alias", candidate_site["source_sha"])
+    expected_compile = candidate_site.get("compile_provenance")
+    for row in matrix:
+        if row["source_identity"] != expected_source:
+            findings.append("matrix source identity differs from candidate")
+            break
+        if expected_compile is not None and row["final_compile_provenance"] != expected_compile:
+            findings.append("matrix final-compile provenance differs from candidate")
+            break
     result = "QA_PASS" if not findings else "QA_FAIL"
     return {"result": result, "findings": findings, "automated_checks_passed": not findings, "limitations": ["Browser evidence does not prove Mini Program or physical-device behavior."], "matrix_rows": len(matrix)}
+
+
+@contextmanager
+def _fixture_server(payload: Mapping[str, Any]):
+    body = json.dumps(dict(payload), ensure_ascii=False, sort_keys=True).encode("utf-8")
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):  # noqa: N802 - stdlib protocol name
+            if self.path != "/raw.json":
+                self.send_response(404)
+                self.end_headers()
+                return
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *_args):
+            return
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield f"http://127.0.0.1:{server.server_port}/raw.json"
+    finally:
+        server.shutdown()
+        thread.join(timeout=2)
+        server.server_close()
+
+
+def run_hermetic_qa2(candidate: Mapping[str, Any], target: Mapping[str, Any], matrix: list[Mapping[str, Any]]) -> dict[str, Any]:
+    """Compare two raw localhost fixture servers and emit sanitized evidence."""
+
+    with _fixture_server(candidate) as candidate_url, _fixture_server(target) as target_url:
+        candidate_raw = urllib.request.urlopen(candidate_url, timeout=2).read()
+        target_raw = urllib.request.urlopen(target_url, timeout=2).read()
+    candidate_document = json.loads(candidate_raw.decode("utf-8"))
+    target_document = json.loads(target_raw.decode("utf-8"))
+    result = compare_candidate_target(candidate_document, target_document, matrix)
+    result.update(
+        {
+            "adapter": {"candidate_url": candidate_url, "target_url": target_url, "external_network_events": [], "mutation_events": []},
+            "evidence": {
+                "before": {"surface": "local-browser", "ref": "redacted:browser-before", "sha256": "sha256:" + hashlib.sha256(candidate_raw).hexdigest(), "sanitized": True, "identity": candidate_document["source_sha"]},
+                "after": {"surface": "local-browser", "ref": "redacted:browser-after", "sha256": "sha256:" + hashlib.sha256(target_raw).hexdigest(), "sanitized": True, "identity": target_document["source_sha"]},
+            },
+            "candidate_source_sha": candidate_document["source_sha"],
+        }
+    )
+    return result
 
 
 def prerequisite_missing(*, browser_available: bool, qa_run_id: str) -> dict[str, Any]:

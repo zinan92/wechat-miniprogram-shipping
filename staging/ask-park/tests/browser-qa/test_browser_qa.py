@@ -33,10 +33,25 @@ class BrowserQATests(unittest.TestCase):
         self.assertTrue(result["automated_checks_passed"])
         self.assertEqual(result["matrix_rows"], 8)
 
+        raw = self.qa.run_hermetic_qa2(self.fixture("candidate-site-valid.json"), self.fixture("target-site-valid.json"), self.fixture("matrix-valid.json"))
+        self.assertEqual(raw["result"], "QA_PASS")
+        self.assertTrue(raw["adapter"]["candidate_url"].startswith("http://127.0.0.1:"))
+        self.assertEqual(raw["adapter"]["external_network_events"], [])
+        self.assertEqual(raw["adapter"]["mutation_events"], [])
+        self.assertTrue(raw["evidence"]["before"]["sanitized"])
+        self.assertTrue(raw["evidence"]["after"]["sanitized"])
+
     def test_stale_bundle_mock_marker_and_deep_link_drift_fail_with_findings(self):
         result = self.qa.compare_candidate_target(self.fixture("candidate-site-valid.json"), self.fixture("target-stale.json"), self.fixture("matrix-valid.json"))
         self.assertEqual(result["result"], "QA_FAIL")
         self.assertGreaterEqual(len(result["findings"]), 3)
+
+        candidate = self.fixture("candidate-site-valid.json")
+        matrix = self.fixture("matrix-valid.json")
+        matrix[0]["source_identity"] = "other-candidate"
+        result = self.qa.compare_candidate_target(candidate, self.fixture("target-site-valid.json"), matrix)
+        self.assertEqual(result["result"], "QA_FAIL")
+        self.assertIn("matrix source identity differs from candidate", result["findings"])
 
     def test_missing_browser_is_prerequisite_missing_not_blocked(self):
         state = self.qa.prerequisite_missing(**self.fixture("browser-missing.json"))
@@ -55,6 +70,30 @@ class BrowserQATests(unittest.TestCase):
         original = json.dumps((candidate, target), sort_keys=True)
         self.qa.compare_candidate_target(candidate, target, self.fixture("matrix-valid.json"))
         self.assertEqual(json.dumps((candidate, target), sort_keys=True), original)
+
+    def test_pass_defect_restore_pass_keeps_candidate_identity(self):
+        candidate = self.fixture("candidate-site-valid.json")
+        target = self.fixture("target-site-valid.json")
+        matrix = self.fixture("matrix-valid.json")
+        source_sha = candidate["source_sha"]
+        self.assertEqual(self.qa.compare_candidate_target(candidate, target, matrix)["result"], "QA_PASS")
+        target["js_digest"] = "sha256:" + "d" * 64
+        failed = self.qa.run_hermetic_qa2(candidate, target, matrix)
+        self.assertEqual(failed["result"], "QA_FAIL")
+        self.assertTrue(failed["evidence"]["after"]["sanitized"])
+        restored = self.qa.run_hermetic_qa2(candidate, self.fixture("target-site-valid.json"), matrix)
+        self.assertEqual(restored["result"], "QA_PASS")
+        self.assertEqual(restored["candidate_source_sha"], source_sha)
+
+    def test_raw_site_private_and_unknown_fields_fail(self):
+        candidate = self.fixture("candidate-site-valid.json")
+        candidate["private_url"] = "cloud://private"
+        with self.assertRaises(self.qa.BrowserQAError):
+            self.qa.validate_site(candidate)
+        candidate = self.fixture("candidate-site-valid.json")
+        candidate["dom_snapshot"] = "unexpected"
+        with self.assertRaises(self.qa.BrowserQAError):
+            self.qa.validate_site(candidate)
 
     def test_docs_define_browser_qa_boundary(self):
         text = (ROOT / "quality" / "browser-qa.md").read_text(encoding="utf-8")

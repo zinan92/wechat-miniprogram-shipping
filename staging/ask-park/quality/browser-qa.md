@@ -24,7 +24,14 @@ provenance. Historical before exceptions never excuse missing after evidence.
 
 ## Hermetic adapter
 
-The S12 adapter compares immutable candidate raw assets with a swappable target
-record. It emits raw identity/drift findings and zero network/filesystem/provider
-events. It never substitutes DOM/source inspection for rendered evidence and
-never edits a candidate.
+The S12 adapter starts two localhost HTTP fixture servers: an immutable
+candidate server and a swappable target server. It compares raw responses,
+emits sanitized before/after capture records and raw identity/drift findings,
+and records zero network outside the two localhost servers plus zero
+filesystem/provider mutation events. It never
+substitutes DOM/source inspection for rendered evidence and never edits a
+candidate.
+
+The negative control is pass → inject stale/mock/deep-link drift → `QA_FAIL`
+with evidence → restore target → pass; the candidate source SHA remains
+unchanged throughout.
