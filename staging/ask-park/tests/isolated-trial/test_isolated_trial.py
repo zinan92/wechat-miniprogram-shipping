@@ -68,6 +68,8 @@ class IsolatedTrialTests(unittest.TestCase):
         self.assertEqual(fixture["transport"], "synthetic-localhost-only")
         self.assertNotIn("wechat-xingqiu", json.dumps(fixture))
         self.assertNotIn("production-cloudbase", json.dumps(fixture))
+        self.assertFalse(self.trial._safe({"ref": "file:///tmp/secret.json"}))
+        self.assertFalse(self.trial._safe({"ref": "~/private.json"}))
 
     def test_docs_define_isolation_and_ordering(self):
         text = (ROOT / "quality" / "isolated-trial.md").read_text(encoding="utf-8")

@@ -60,7 +60,7 @@ def _safe(value: Any) -> bool:
         return all(_safe(child) for child in value)
     elif isinstance(value, str):
         lowered = value.lower()
-        if any(marker in lowered for marker in ("http://", "https://", "cloud://", "/users/", "/private/", "wechat-xingqiu", "production-cloudbase", "customer-project")):
+        if any(marker in lowered for marker in ("http://", "https://", "file://", "cloud://", "/users/", "/private/", "~/", "wechat-xingqiu", "production-cloudbase", "customer-project")):
             return False
     return True
 
@@ -191,10 +191,10 @@ def run_trial() -> dict[str, Any]:
     with tempfile.TemporaryDirectory(prefix="ask-park-trial-") as directory:
         path = Path(directory) / "trial-result.json"
         path.write_text(json.dumps(result, ensure_ascii=False, sort_keys=True), encoding="utf-8")
-        if any(marker in path.read_bytes().lower() for marker in (b"http://", b"https://", b"cloud://", b"wechat-xingqiu")):
+        if any(marker in path.read_bytes().lower() for marker in (b"http://", b"https://", b"file://", b"cloud://", b"/users/", b"/private/", b"~/", b"wechat-xingqiu")):
             _fail("TRIAL_ARTIFACT_PRIVATE", "trial artifact contains forbidden bytes", "artifact")
         result["artifact_tree_clean"] = True
         path.write_text(json.dumps(result, ensure_ascii=False, sort_keys=True), encoding="utf-8")
-        if any(marker in path.read_bytes().lower() for marker in (b"http://", b"https://", b"cloud://", b"wechat-xingqiu")):
+        if any(marker in path.read_bytes().lower() for marker in (b"http://", b"https://", b"file://", b"cloud://", b"/users/", b"/private/", b"~/", b"wechat-xingqiu")):
             _fail("TRIAL_ARTIFACT_PRIVATE", "final trial artifact contains forbidden bytes", "artifact")
     return result
