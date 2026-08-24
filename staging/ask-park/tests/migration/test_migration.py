@@ -88,6 +88,12 @@ class MigrationTests(unittest.TestCase):
             with self.assertRaises(self.migration.MigrationError) as raised:
                 self.migration.pre_migration_receipt(inventory, bad, repository_identity="zinan92/wechat-miniprogram-shipping", history_ref="main-history")
             self.assertEqual(raised.exception.code, "MIGRATION_MANIFEST_INVALID")
+            bad = dict(staged)
+            bad["manifest"] = dict(staged["manifest"])
+            bad["manifest"]["manifest_digest"] = "sha256:" + "f" * 64
+            with self.assertRaises(self.migration.MigrationError) as raised:
+                self.migration.pre_migration_receipt(inventory, bad, repository_identity="zinan92/wechat-miniprogram-shipping", history_ref="main-history")
+            self.assertEqual(raised.exception.code, "MIGRATION_MANIFEST_DIGEST")
 
     def test_rollbacks_cover_all_checkpoints_and_preserve_legacy_backup(self):
         for checkpoint in self.migration.CHECKPOINTS:
@@ -108,8 +114,26 @@ class MigrationTests(unittest.TestCase):
             (source / "agents" / "openai.yaml").write_text("interface: {}\n", encoding="utf-8")
             (source / "linked").symlink_to(Path(directory), target_is_directory=True)
             with self.assertRaises(self.migration.MigrationError) as raised:
-                self.migration.stage_canonical_install(source, Path(directory) / "out")
+                self.migration.stage_canonical_install(source, Path(directory) / "out", scanned_roots=[])
             self.assertEqual(raised.exception.code, "MIGRATION_SOURCE_SYMLINK")
+
+    def test_staging_rejects_private_source_file_before_copy(self):
+        with tempfile.TemporaryDirectory(prefix="migration-private-source-") as directory:
+            source = Path(directory) / "source"
+            source.mkdir()
+            (source / "SKILL.md").write_text("---\nname: ask-park\ndescription: test\n---\n", encoding="utf-8")
+            (source / "agents").mkdir()
+            (source / "agents" / "openai.yaml").write_text("interface: {}\n", encoding="utf-8")
+            (source / ".env.secret").write_text("token=do-not-copy", encoding="utf-8")
+            with self.assertRaises(self.migration.MigrationError) as raised:
+                self.migration.stage_canonical_install(source, Path(directory) / "out", scanned_roots=[])
+            self.assertEqual(raised.exception.code, "MIGRATION_SOURCE_PRIVATE")
+            self.assertFalse((Path(directory) / "out" / "ask-park").exists())
+
+    def test_rollback_rejects_repository_workspace(self):
+        with self.assertRaises(self.migration.MigrationError) as raised:
+            self.migration.rollback_checkpoint(REPO_ROOT, "staging-failure")
+        self.assertEqual(raised.exception.code, "MIGRATION_ROLLBACK_SCOPE")
 
     def test_root_identity_and_fixture_are_not_active_cutover(self):
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))

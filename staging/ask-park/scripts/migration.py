@@ -92,11 +92,26 @@ def _file_manifest(root: Path) -> tuple[list[dict[str, str]], str]:
             continue
         relative = path.relative_to(root).as_posix()
         normalized = relative.lower().replace("-", "_")
-        if any(marker in normalized for marker in PRIVATE_MARKERS) or any(part in normalized for part in (".env", "credentials", "cookies")):
+        if "fixtures" not in path.parts and (any(marker in normalized for marker in PRIVATE_MARKERS) or any(part in normalized for part in (".env", "credentials", "cookies"))):
             continue
         rows.append({"file_ref": "redacted:file-" + hashlib.sha256(relative.encode()).hexdigest()[:16], "digest": _hash_bytes(path.read_bytes())})
     manifest = {"files": rows}
     return rows, _hash_json(manifest)
+
+
+def _assert_source_clean(root: Path) -> None:
+    for path in root.rglob("*"):
+        if not path.is_file() or path.is_symlink():
+            continue
+        normalized = path.relative_to(root).as_posix().lower().replace("-", "_")
+        if "fixtures" not in path.parts and (any(marker in normalized for marker in PRIVATE_MARKERS) or any(part in normalized for part in (".env", "credentials", "cookies"))):
+            _fail("MIGRATION_SOURCE_PRIVATE", "source package contains a private filename", "source_root")
+        if path.suffix.lower() not in {".py", ".md"} and "fixtures" not in path.parts and "__pycache__" not in path.parts:
+            data = path.read_bytes().lower()
+        else:
+            data = b""
+        if any(marker in data for marker in (b"openid", b"appsecret", b"private_key", b"password=", b"token=")):
+            _fail("MIGRATION_SOURCE_PRIVATE", "source package contains private bytes", "source_root")
 
 
 def inventory_roots(root_specs: list[Mapping[str, Any]]) -> dict[str, Any]:
@@ -147,7 +162,20 @@ def package_manifest(package_root: Path) -> dict[str, Any]:
     return result
 
 
-def stage_canonical_install(source_root: Path, staging_parent: Path, *, scanned_roots: list[Path] | None = None) -> dict[str, Any]:
+def _verify_package_manifest(manifest: Mapping[str, Any]) -> None:
+    if not isinstance(manifest, Mapping) or manifest.get("kind") != "ask-park-staged-manifest":
+        _fail("MIGRATION_MANIFEST_INVALID", "staged manifest kind is invalid", "staged.manifest")
+    files = manifest.get("files")
+    if not isinstance(files, list) or manifest.get("file_count") != len(files):
+        _fail("MIGRATION_MANIFEST_INVALID", "staged manifest file count is invalid", "staged.manifest.files")
+    package_digest = _hash_json({"files": files})
+    manifest_without_digest = {key: value for key, value in manifest.items() if key != "manifest_digest"}
+    manifest_digest = _hash_json(manifest_without_digest)
+    if manifest.get("package_digest") != package_digest or manifest.get("manifest_digest") != manifest_digest:
+        _fail("MIGRATION_MANIFEST_DIGEST", "staged manifest digest does not match its canonical file list", "staged.manifest")
+
+
+def stage_canonical_install(source_root: Path, staging_parent: Path, *, scanned_roots: list[Path]) -> dict[str, Any]:
     """Copy the staged package outside scanned roots and validate closure."""
 
     if source_root.is_symlink():
@@ -158,6 +186,7 @@ def stage_canonical_install(source_root: Path, staging_parent: Path, *, scanned_
         scanned = Path(scanned_root).resolve()
         if staging_parent.resolve() == scanned or staging_parent.resolve().is_relative_to(scanned):
             _fail("MIGRATION_SCANNED_ROOT_SCOPE", "staging destination must be outside every scanned root", "staging_parent")
+    _assert_source_clean(source_root)
     if any(path.is_symlink() for path in source_root.rglob("*")):
         _fail("MIGRATION_SOURCE_SYMLINK", "canonical staging refuses source symlinks that could escape the package", "source_root")
     destination = staging_parent / "ask-park"
@@ -174,7 +203,7 @@ def stage_canonical_install(source_root: Path, staging_parent: Path, *, scanned_
     if errors:
         _fail("MIGRATION_CANONICAL_VALIDATION", "staged package failed canonical validation", "staging")
     manifest = package_manifest(destination)
-    return {"checkpoint": "staged", "staging_ref": "redacted:ask-park-staging", "manifest": manifest, "rollback_safe": True, "scope_verified": scanned_roots is not None}
+    return {"checkpoint": "staged", "staging_ref": "redacted:ask-park-staging", "manifest": manifest, "rollback_safe": True, "scope_verified": True}
 
 
 def pre_migration_receipt(inventory: Mapping[str, Any], staged: Mapping[str, Any], *, repository_identity: str, history_ref: str) -> dict[str, Any]:
@@ -185,8 +214,9 @@ def pre_migration_receipt(inventory: Mapping[str, Any], staged: Mapping[str, Any
     if not isinstance(staged, Mapping) or staged.get("checkpoint") != "staged" or staged.get("scope_verified") is not True:
         _fail("MIGRATION_STAGED_REQUIRED", "pre-migration receipt requires a staged package", "staged")
     manifest = staged.get("manifest")
-    if not isinstance(manifest, Mapping) or manifest.get("kind") != "ask-park-staged-manifest" or not _digest(manifest.get("package_digest")) or not _digest(manifest.get("manifest_digest")):
+    if not isinstance(manifest, Mapping) or not _digest(manifest.get("package_digest")) or not _digest(manifest.get("manifest_digest")):
         _fail("MIGRATION_MANIFEST_INVALID", "staged manifest must carry verified package and manifest digests", "staged.manifest")
+    _verify_package_manifest(manifest)
     result = {
         "schema_version": 1,
         "kind": "pre-migration-receipt",
@@ -209,6 +239,9 @@ def rollback_checkpoint(workspace: Path, checkpoint: str) -> dict[str, Any]:
 
     if checkpoint not in CHECKPOINTS:
         _fail("MIGRATION_CHECKPOINT_UNKNOWN", "checkpoint is outside the rollback contract", "checkpoint")
+    resolved_workspace = workspace.resolve()
+    if not workspace.is_absolute() or resolved_workspace == ROOT or resolved_workspace.is_relative_to(ROOT) or not workspace.name.startswith("migration-rollback-"):
+        _fail("MIGRATION_ROLLBACK_SCOPE", "rollback requires a managed temporary workspace outside the repository", "workspace")
     canonical = workspace / "canonical-install"
     partial = workspace / "partial-install"
     legacy = workspace / "legacy-backup"
