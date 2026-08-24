@@ -69,6 +69,24 @@ class DevToolsQATests(unittest.TestCase):
         self.assertEqual(result["result"], "QA_FAIL")
         self.assertIn("missing-final-compile", result["findings"])
 
+    def test_matrix_requires_a_screenshot_for_every_state(self):
+        events = self.fixture("events-valid.json")
+        del events[2]
+        result = self.qa.evaluate_events(events, self.fixture("matrix-valid.json"))
+        self.assertEqual(result["result"], "QA_FAIL")
+        self.assertIn("matrix screenshot missing: loading", result["findings"])
+
+    def test_qa1_candidate_render_is_separate_from_qa2_upload_readback(self):
+        candidate_events = self.fixture("events-valid.json")[:11]
+        matrix = self.fixture("matrix-valid.json")
+        qa1 = self.qa.run_hermetic_qa1(candidate_events, matrix)
+        self.assertEqual(qa1["gate"], "qa-1")
+        self.assertEqual(qa1["result"], "QA_PASS")
+        qa2 = self.qa.run_hermetic_qa2(candidate_events, matrix)
+        self.assertEqual(qa2["gate"], "qa-2")
+        self.assertEqual(qa2["result"], "QA_FAIL")
+        self.assertIn("missing-final-compile", qa2["findings"])
+
     def test_pass_defect_restore_pass_keeps_candidate_sha(self):
         events = self.fixture("events-valid.json")
         matrix = self.fixture("matrix-valid.json")

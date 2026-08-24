@@ -293,22 +293,27 @@ def validate_matrix(matrix: list[Mapping[str, Any]]) -> list[dict[str, Any]]:
     return normalized
 
 
-def evaluate_events(events: list[Mapping[str, Any]], matrix: list[Mapping[str, Any]]) -> dict[str, Any]:
+def evaluate_events(
+    events: list[Mapping[str, Any]], matrix: list[Mapping[str, Any]], *, gate: str = "qa-2"
+) -> dict[str, Any]:
     """Return a sanitized QA verdict from raw events and matrix evidence."""
 
+    if gate not in {"qa-1", "qa-2"}:
+        _fail("DEVTOOLS_GATE", "gate must be qa-1 or qa-2", "gate")
     raw = validate_events(events)
     rows = validate_matrix(matrix)
     types = [event["type"] for event in raw]
     findings: list[str] = []
 
-    required_findings = (
-        ("project-open", "exact project was not opened"),
-        ("compile", "compile event is missing"),
-        ("screenshot", "screenshot evidence is missing"),
-        ("upload-note", "upload note is missing"),
-        ("platform-readback", "platform read-back is missing"),
-        ("final-compile", "missing-final-compile"),
-    )
+    required_findings = [("project-open", "exact project was not opened"), ("compile", "compile event is missing"), ("screenshot", "screenshot evidence is missing")]
+    if gate == "qa-2":
+        required_findings.extend(
+            [
+                ("upload-note", "upload note is missing"),
+                ("platform-readback", "platform read-back is missing"),
+                ("final-compile", "missing-final-compile"),
+            ]
+        )
     for event_type, finding in required_findings:
         if event_type not in types:
             findings.append(finding)
@@ -322,14 +327,18 @@ def evaluate_events(events: list[Mapping[str, Any]], matrix: list[Mapping[str, A
     final_compile = next((event for event in raw if event["type"] == "final-compile"), None)
     candidate_sha = compile_event.get("source_sha") if compile_event else None
     final_sha = final_compile.get("source_sha") if final_compile else None
-    if compile_event and final_compile and candidate_sha != final_sha:
+    if gate == "qa-2" and compile_event and final_compile and candidate_sha != final_sha:
         findings.append("final compile source identity differs")
-    final_provenance = final_compile.get("compile_provenance") if final_compile else None
+    final_provenance = (
+        final_compile.get("compile_provenance") if final_compile else compile_event.get("compile_provenance") if gate == "qa-1" and compile_event else None
+    )
 
     row_by_key = {(row["route"], row["device"], row["state"]): row for row in rows}
     screenshots = [event for event in raw if event["type"] == "screenshot"]
+    screenshot_keys = set()
     for screenshot in screenshots:
         key = (screenshot["route"], screenshot["device"], screenshot["state"])
+        screenshot_keys.add(key)
         row = row_by_key.get(key)
         if row is None:
             findings.append("screenshot is outside the declared matrix")
@@ -338,6 +347,9 @@ def evaluate_events(events: list[Mapping[str, Any]], matrix: list[Mapping[str, A
             findings.append("screenshot source identity differs from candidate")
         if screenshot["screenshot_hash"] != row["screenshot_hash"]:
             findings.append("screenshot hash differs from matrix evidence")
+    for row_key in row_by_key:
+        if row_key not in screenshot_keys:
+            findings.append(f"matrix screenshot missing: {row_key[2]}")
 
     if candidate_sha is None:
         findings.append("matrix source identity cannot be verified")
@@ -347,7 +359,7 @@ def evaluate_events(events: list[Mapping[str, Any]], matrix: list[Mapping[str, A
                 findings.append("matrix source identity differs from candidate")
                 break
     if final_provenance is None:
-        if "final-compile" in types:
+        if gate == "qa-2" and "final-compile" in types:
             findings.append("final compile provenance is missing")
     else:
         for row in rows:
@@ -434,13 +446,15 @@ def _fixture_server(events: list[Mapping[str, Any]]) -> Iterator[str]:
         server.server_close()
 
 
-def run_hermetic_qa(events: list[Mapping[str, Any]], matrix: list[Mapping[str, Any]]) -> dict[str, Any]:
+def run_hermetic_qa(
+    events: list[Mapping[str, Any]], matrix: list[Mapping[str, Any]], *, gate: str = "qa-2"
+) -> dict[str, Any]:
     """Replay raw events through an ephemeral localhost adapter."""
 
     with _fixture_server(events) as fixture_url:
         raw_bytes = urllib.request.urlopen(fixture_url, timeout=2).read()
     replayed = json.loads(raw_bytes.decode("utf-8"))
-    result = evaluate_events(replayed, matrix)
+    result = evaluate_events(replayed, matrix, gate=gate)
     result.update(
         {
             "adapter": {
@@ -458,7 +472,7 @@ def run_hermetic_qa(events: list[Mapping[str, Any]], matrix: list[Mapping[str, A
 def run_hermetic_qa1(events: list[Mapping[str, Any]], matrix: list[Mapping[str, Any]]) -> dict[str, Any]:
     """QA-1 alias: candidate compile and Simulator evidence only."""
 
-    result = run_hermetic_qa(events, matrix)
+    result = run_hermetic_qa(events, matrix, gate="qa-1")
     result["gate"] = "qa-1"
     return result
 
@@ -466,7 +480,7 @@ def run_hermetic_qa1(events: list[Mapping[str, Any]], matrix: list[Mapping[str, 
 def run_hermetic_qa2(events: list[Mapping[str, Any]], matrix: list[Mapping[str, Any]]) -> dict[str, Any]:
     """QA-2 alias: upload/read-back and final-compile evidence."""
 
-    result = run_hermetic_qa(events, matrix)
+    result = run_hermetic_qa(events, matrix, gate="qa-2")
     result["gate"] = "qa-2"
     return result
 

@@ -21,6 +21,10 @@ Before asking Park to inspect a change, the worker must:
 5. Record observable defects as raw enum values. A worker summary such as
    “looks fixed” is not evidence.
 
+QA-1 is complete at the candidate-render boundary. It does not require an
+experience upload, platform read-back, or final-compile event; those belong to
+QA-2 and cannot be silently inferred by QA-1.
+
 ## QA-2: upload/read-back and final compile
 
 When the change is eligible for an experience check, the same candidate must
