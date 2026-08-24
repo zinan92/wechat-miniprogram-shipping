@@ -18,6 +18,15 @@ class RecordReplayAdapter:
         self.events.append({"kind": "read", "key": key})
         return self._records[key]
 
+    def request(self, target):
+        raise ExternalSideEffectError(f"network is forbidden in fixtures: {target}")
+
+    def write(self, target, value):
+        raise ExternalSideEffectError(f"mutation is forbidden in fixtures: {target}")
+
+    def delete(self, target):
+        raise ExternalSideEffectError(f"deletion is forbidden in fixtures: {target}")
+
 
 def assert_no_external_side_effects(events):
     forbidden = {"network", "mutation", "upload", "delete", "payment", "review"}

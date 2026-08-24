@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 
 
@@ -20,6 +21,15 @@ def _frontmatter(path: Path) -> list[str]:
     except ValueError:
         return []
     return lines[1:end]
+
+
+def _local_references(path: Path) -> list[str]:
+    references = []
+    for target in re.findall(r"\]\(([^)#?]+)", path.read_text(encoding="utf-8")):
+        if target.startswith(("http://", "https://", "mailto:", "#")):
+            continue
+        references.append(target)
+    return references
 
 
 def validate_package_layout(root: Path, mode: str = "staged") -> list[str]:
@@ -39,12 +49,22 @@ def validate_package_layout(root: Path, mode: str = "staged") -> list[str]:
         if not (root / directory).is_dir():
             errors.append(f"missing required directory: {directory}")
 
+    if mode == "final":
+        for required_file in ("README.md", "REGISTRY.md"):
+            if not (root / required_file).is_file():
+                errors.append(f"final package is missing {required_file}")
+        if (root / "staging" / "ask-park").exists():
+            errors.append("final package still contains staging/ask-park")
+
     if entrypoint.is_file():
         frontmatter = _frontmatter(entrypoint)
         if "name: ask-park" not in frontmatter:
             errors.append("SKILL.md must declare name: ask-park")
         if not any(line.startswith("description:") for line in frontmatter):
             errors.append("SKILL.md frontmatter is missing description")
+        for reference in _local_references(entrypoint):
+            if not (root / reference).is_file():
+                errors.append(f"missing SKILL.md reference: {reference}")
 
     all_entrypoints = list(root.rglob("SKILL.md"))
     if len(all_entrypoints) != 1:

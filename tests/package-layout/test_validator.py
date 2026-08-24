@@ -55,6 +55,52 @@ class PackageLayoutValidatorTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("nested SKILL.md", result.stdout)
 
+    def test_nested_module_file_is_allowed(self):
+        package = self.copy_template()
+        module = package / "modules" / "01-plan"
+        module.mkdir()
+        (module / "MODULE.md").write_text("# Plan module\n", encoding="utf-8")
+
+        result = self.run_validator(package)
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_nested_metadata_is_rejected(self):
+        package = self.copy_template()
+        metadata = package / "quality" / "agents"
+        metadata.mkdir()
+        (metadata / "openai.yaml").write_text("interface: {}\n", encoding="utf-8")
+
+        result = self.run_validator(package)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("nested agents/openai.yaml", result.stdout)
+
+    def test_missing_local_entrypoint_reference_is_rejected(self):
+        package = self.copy_template()
+        (package / "SKILL.md").write_text(
+            "---\nname: ask-park\ndescription: staged\n---\n\n[missing](references/not-there.md)\n",
+            encoding="utf-8",
+        )
+
+        result = self.run_validator(package)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("missing SKILL.md reference", result.stdout)
+
+    def test_final_mode_requires_public_package_files_and_no_staging_copy(self):
+        package = self.copy_template()
+        (package / "README.md").write_text("# Ask Park\n", encoding="utf-8")
+        (package / "REGISTRY.md").write_text("# Registry\n", encoding="utf-8")
+
+        valid = self.run_validator(package, mode="final")
+        self.assertEqual(valid.returncode, 0, valid.stdout)
+
+        (package / "staging" / "ask-park").mkdir(parents=True)
+        invalid = self.run_validator(package, mode="final")
+        self.assertNotEqual(invalid.returncode, 0)
+        self.assertIn("staging/ask-park", invalid.stdout)
+
 
 class FixtureHarnessTests(unittest.TestCase):
     def test_record_replay_reads_fixture_without_external_side_effects(self):
@@ -76,6 +122,15 @@ class FixtureHarnessTests(unittest.TestCase):
 
         with self.assertRaises(module.ExternalSideEffectError):
             module.assert_no_external_side_effects([{"kind": "network", "target": "example.invalid"}])
+
+        adapter = module.RecordReplayAdapter({})
+        for action in (
+            lambda: adapter.request("example.invalid"),
+            lambda: adapter.write("fixture", {}),
+            lambda: adapter.delete("fixture"),
+        ):
+            with self.assertRaises(module.ExternalSideEffectError):
+                action()
 
 
 if __name__ == "__main__":
