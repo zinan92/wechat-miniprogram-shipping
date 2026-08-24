@@ -105,21 +105,7 @@ def _canonical_json(value: Any) -> str:
     if value is None or isinstance(value, (bool, int, str)):
         return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
     if isinstance(value, float):
-        if not math.isfinite(value):
-            raise ValueError("non-finite JSON number is not accepted")
-        if value == 0:
-            return "0"
-        text = json.dumps(value, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
-        if text.endswith(".0"):
-            text = text[:-2]
-        if "e" in text:
-            mantissa, exponent = text.split("e", 1)
-            sign = ""
-            if exponent.startswith(("+", "-")):
-                sign, exponent = exponent[0], exponent[1:]
-            exponent = exponent.lstrip("0") or "0"
-            text = mantissa + "e" + sign + exponent
-        return text
+        raise ValueError("floating JSON numbers are not accepted; use integers for this JCS profile")
     if isinstance(value, list):
         return "[" + ",".join(_canonical_json(item) for item in value) + "]"
     if isinstance(value, dict):
@@ -268,11 +254,13 @@ def validate_result(document: Any) -> ValidationResult:
             errors.add("QA_CANDIDATE_DIGEST", "manifest.candidate_manifest_digest", "candidate result binding is required")
         if pre_target and document.get("target_manifest_digest") is not None:
             errors.add("QA_TARGET_BINDING", "manifest.target_manifest_digest", "pre-target result cannot bind a target")
+        if pre_target and document.get("target_receipt_id") is not None:
+            errors.add("QA_TARGET_RECEIPT", "manifest.target_receipt_id", "pre-target result cannot bind a target receipt")
         if not pre_target and not _is_digest(document.get("target_manifest_digest")):
             errors.add("QA_TARGET_BINDING", "manifest.target_manifest_digest", "post-target result must bind a target")
         if not pre_target and not _is_alias(document.get("target_receipt_id")):
             errors.add("QA_TARGET_RECEIPT", "manifest.target_receipt_id", "post-target result requires a target receipt alias")
-        if not pre_target and not isinstance(document.get("predecessor_receipt_ids"), list):
+        if not pre_target and (not isinstance(document.get("predecessor_receipt_ids"), list) or any(not _is_alias(item) for item in document.get("predecessor_receipt_ids", []))):
             errors.add("QA_PREDECESSORS", "manifest.predecessor_receipt_ids", "post-target result requires predecessor receipt aliases")
         if not _is_iso(document.get("observed_at")):
             errors.add("QA_TIMESTAMP", "manifest.observed_at", "observed_at must be ISO-8601")
@@ -309,16 +297,20 @@ def validate_evidence(document: Any) -> ValidationResult:
     if not isinstance(tool, dict) or not all(isinstance(tool.get(key), str) and tool.get(key) for key in ("name", "version", "runtime_or_base_library")):
         errors.add("QA_TOOL", "evidence.tool", "tool/runtime identity is required")
     before = document.get("before_evidence")
-    if before is not None and (not isinstance(before, dict) or not _is_redacted(before.get("ref")) or not _is_digest(before.get("sha256")) or not _is_iso(before.get("captured_at")) or not isinstance(before.get("identity"), str) or not before.get("identity")):
+    if before is not None and (document.get("evidence_mode") == "ephemeral-only" or not isinstance(before, dict) or not _is_redacted(before.get("ref")) or not _is_digest(before.get("sha256")) or not _is_iso(before.get("captured_at")) or not isinstance(before.get("identity"), str) or not before.get("identity")):
         errors.add("QA_BEFORE", "evidence.before_evidence", "before evidence identity is invalid")
     after = document.get("after_evidence")
     if not isinstance(after, dict):
         errors.add("EVIDENCE_AFTER_REQUIRED", "evidence.after_evidence", "after evidence is always required")
     else:
         for key in ("ref", "source_or_package_identity", "final_compile_receipt_id"):
+            if key == "ref" and document.get("evidence_mode") == "ephemeral-only":
+                if after.get(key) is not None:
+                    errors.add("QA_EPHEMERAL_REFERENCE", "evidence.after_evidence.ref", "ephemeral evidence cannot persist nested refs")
+                continue
             if not isinstance(after.get(key), str) or not after.get(key):
                 errors.add("EVIDENCE_FINAL_COMPILE" if key == "final_compile_receipt_id" else "QA_AFTER", f"evidence.after_evidence.{key}", "after evidence field is required")
-        if not _is_redacted(after.get("ref")):
+        if document.get("evidence_mode") != "ephemeral-only" and not _is_redacted(after.get("ref")):
             errors.add("QA_AFTER_REF", "evidence.after_evidence.ref", "after evidence ref must be redacted")
         if not _is_digest(after.get("sha256")):
             errors.add("QA_AFTER_HASH", "evidence.after_evidence.sha256", "after evidence hash is required")
@@ -339,14 +331,26 @@ def validate_qa_state(document: Any) -> ValidationResult:
         errors.add("QA_UNKNOWN_FIELD", "qa-state.<key>", "field is not in the QA state schema")
     qa = document["qa"]
     errors.required(qa, ("execution_state", "result", "control_outcome", "gate", "candidate_manifest_digest", "target_manifest_digest", "attempt", "max_attempts", "origin_module", "result_receipt_id"), "qa")
+    allowed_qa_keys = {"execution_state", "result", "control_outcome", "gate", "candidate_manifest_digest", "target_manifest_digest", "attempt", "max_attempts", "origin_module", "result_receipt_id"}
+    for key in qa:
+        if key not in allowed_qa_keys:
+            errors.add("QA_UNKNOWN_FIELD", "qa.<key>", "field is not in the QA state schema")
     if qa.get("execution_state") not in {"unavailable", "ready", "running", "complete"}:
         errors.add("QA_STATE", "qa.execution_state", "execution state is invalid")
     if qa.get("result") not in {"none", "QA_PASS", "QA_FAIL", "QA_BLOCKED"}:
         errors.add("QA_STATE", "qa.result", "result is invalid")
     if qa.get("control_outcome") not in {"none", "qa-prerequisite-missing", "needs-park-decision"}:
         errors.add("QA_STATE", "qa.control_outcome", "control outcome is invalid")
+    if qa.get("gate") not in {"contract", "qa-1", "target", "qa-2", "evidence", "final"}:
+        errors.add("QA_GATE", "qa.gate", "gate is invalid")
+    if qa.get("origin_module") not in MODULES:
+        errors.add("QA_ORIGIN_MODULE", "qa.origin_module", "origin module is invalid")
+    if qa.get("result_receipt_id") is not None and not _is_alias(qa.get("result_receipt_id")):
+        errors.add("QA_ALIAS", "qa.result_receipt_id", "result receipt ID must be an alias or null")
     if qa.get("execution_state") == "unavailable" and qa.get("control_outcome") != "qa-prerequisite-missing":
         errors.add("QA_PREREQUISITE", "qa.control_outcome", "unavailable evaluator requires prerequisite-missing")
+    if qa.get("execution_state") == "unavailable" and qa.get("result") != "none":
+        errors.add("QA_PREREQUISITE", "qa.result", "unavailable evaluator cannot issue a result")
     if qa.get("result") == "QA_BLOCKED" and qa.get("execution_state") != "complete":
         errors.add("QA_STATE", "qa.execution_state", "blocked result must be complete")
     if qa.get("execution_state") == "unavailable" and qa.get("result") == "QA_BLOCKED":

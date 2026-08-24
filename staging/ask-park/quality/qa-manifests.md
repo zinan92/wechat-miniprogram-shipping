@@ -10,6 +10,9 @@ The validator removes top-level `digest`, rejects duplicate keys, rejects
 non-JSON values/NaN/infinities and sensitive/private fields, canonicalizes the
 remaining JSON object with deterministic JCS-compatible UTF-8 bytes, and
 SHA-256 hashes those bytes. The manifest persists only `sha256:<64 hex>`.
+This S10 profile uses integers, booleans, strings, arrays, and objects only;
+floating-point JSON numbers are rejected so every implementation shares the
+same RFC 8785-compatible number boundary.
 
 ## Candidate
 

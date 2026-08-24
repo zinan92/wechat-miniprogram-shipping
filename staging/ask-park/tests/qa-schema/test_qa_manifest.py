@@ -52,6 +52,12 @@ class QAManifestContractTests(unittest.TestCase):
         self.assertEqual(target["candidate_manifest_digest"], candidate["digest"])
         self.assertIsNone(qa1["target_manifest_digest"])
         self.assertEqual(qa2["target_manifest_digest"], target["digest"])
+        qa1_with_target = copy.deepcopy(qa1)
+        qa1_with_target["target_receipt_id"] = "experience-r1"
+        qa1_with_target["digest"] = self.validator.canonical_digest(qa1_with_target)
+        invalid = self.validator.validate_document(qa1_with_target, "result")
+        self.assertFalse(invalid.valid)
+        self.assertIn("QA_TARGET_RECEIPT", {error.code for error in invalid.errors})
 
     def test_evidence_matrix_requires_after_identity_and_final_compile(self):
         row = self.fixture("evidence-row-valid.json")
@@ -93,6 +99,12 @@ class QAManifestContractTests(unittest.TestCase):
         validation = self.validator.validate_document(result, "result")
         self.assertFalse(validation.valid)
         self.assertIn("QA_EPHEMERAL_REFERENCE", {error.code for error in validation.errors})
+        row = self.fixture("evidence-row-valid.json")
+        row["evidence_mode"] = "ephemeral-only"
+        row["after_evidence"]["ref"] = "redacted:embedded-persistent-ref"
+        validation = self.validator.validate_document(row, "evidence")
+        self.assertFalse(validation.valid)
+        self.assertIn("QA_EPHEMERAL_REFERENCE", {error.code for error in validation.errors})
 
     def test_approved_store_requires_governance_and_state_schema_is_complete(self):
         candidate = self.fixture("candidate-valid.json")
@@ -105,6 +117,16 @@ class QAManifestContractTests(unittest.TestCase):
         validation = self.validator.validate_document(state, "qa-state")
         self.assertFalse(validation.valid)
         self.assertIn("QA_REQUIRED_FIELD", {error.code for error in validation.errors})
+        state = self.fixture("qa-state-unavailable.json")
+        state["qa"]["gate"] = "garbage"
+        state["qa"]["origin_module"] = "unknown"
+        state["qa"]["result"] = "QA_PASS"
+        validation = self.validator.validate_document(state, "qa-state")
+        self.assertFalse(validation.valid)
+        codes = {error.code for error in validation.errors}
+        self.assertIn("QA_GATE", codes)
+        self.assertIn("QA_ORIGIN_MODULE", codes)
+        self.assertIn("QA_PREREQUISITE", codes)
 
     def test_privacy_and_malformed_negative_fixtures_fail(self):
         for name in ("candidate-private-invalid.json", "candidate-duplicate-key.json", "target-stale-invalid.json"):
