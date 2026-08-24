@@ -42,7 +42,7 @@ class DevToolsQATests(unittest.TestCase):
                 "route", "device", "state", "source_sha", "screenshot_hash",
                 "final_compile_provenance", "ref", "sanitized", "matrix_bound",
                 "viewport", "role", "data_state", "tool", "runtime", "observed_at",
-                "source_identity",
+                "source_identity", "before_hash", "after_hash",
             },
         )
 

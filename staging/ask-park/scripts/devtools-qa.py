@@ -397,6 +397,8 @@ def evaluate_events(
                     "runtime": row["runtime"],
                     "observed_at": row["observed_at"],
                     "source_identity": row.get("source_identity", row["source_sha"]),
+                    "before_hash": row.get("before_hash"),
+                    "after_hash": row.get("after_hash", row["screenshot_hash"]),
                 }
             )
         evidence.append(evidence_row)
