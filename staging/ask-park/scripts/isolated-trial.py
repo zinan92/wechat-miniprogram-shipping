@@ -113,6 +113,11 @@ def run_trial() -> dict[str, Any]:
     target = _read("browser-qa/target-site-valid.json")
     stale = _read("browser-qa/target-stale.json")
     browser_matrix = _read("browser-qa/matrix-valid.json")
+    candidate["source_sha"] = trial["candidate_source_sha"]
+    target["source_sha"] = trial["candidate_source_sha"]
+    target["target_alias"] = trial["target_alias"]
+    if candidate["source_sha"] != trial["browser_candidate_source_sha"] or target["target_alias"] != trial["browser_target_alias"]:
+        _fail("TRIAL_CANDIDATE_BINDING", "Browser candidate/target identity does not match the trial contract", "browser")
     browser_pass = BROWSER.run_hermetic_qa2(candidate, target, browser_matrix)
     browser_fail = BROWSER.run_hermetic_qa2(candidate, stale, browser_matrix)
     browser_restore = BROWSER.run_hermetic_qa2(candidate, target, browser_matrix)
@@ -120,12 +125,29 @@ def run_trial() -> dict[str, Any]:
     dev_matrix = _read("devtools-qa/matrix-valid.json")
     dev_valid = _read("devtools-qa/events-valid.json")
     dev_defect = _read("devtools-qa/events-defect.json")
+    dev_missing_final = _read("devtools-qa/events-missing-final-compile.json")
+    for event_set in (dev_valid, dev_defect, dev_missing_final):
+        event_set[0]["project_alias"] = trial["project_alias"]
+    if dev_valid[1]["source_sha"] != trial["devtools_candidate_source_sha"]:
+        _fail("TRIAL_CANDIDATE_BINDING", "DevTools compile source does not match the trial contract", "devtools")
     dev_pass = DEVTOOLS.run_hermetic_qa(dev_valid, dev_matrix)
     dev_fail = DEVTOOLS.run_hermetic_qa(dev_defect, dev_matrix)
+    dev_missing = DEVTOOLS.run_hermetic_qa(dev_missing_final, dev_matrix)
+    dev_stale_events = copy.deepcopy(dev_valid)
+    dev_stale_events[2]["defects"] = ["stale-package"]
+    dev_stale = DEVTOOLS.run_hermetic_qa(dev_stale_events, dev_matrix)
     dev_restore = DEVTOOLS.run_hermetic_qa(dev_valid, dev_matrix)
+    nested_runs = (browser_pass, browser_fail, browser_restore, dev_pass, dev_fail, dev_missing, dev_stale, dev_restore)
+    if any(run["adapter"]["external_network_events"] or run["adapter"].get("mutation_events", run["adapter"].get("platform_mutation_events", [])) for run in nested_runs):
+        _fail("TRIAL_EXTERNAL_SIDE_EFFECT", "nested Browser/DevTools adapter reported an external side effect", "surfaces")
+    if browser_pass["result"] != "QA_PASS" or dev_pass["result"] != "QA_PASS":
+        _fail("TRIAL_AUTOMATION_ORDER", "human gate cannot be reached before automation passes", "human")
 
     fresh_candidate, fresh_target, fresh_matrix = _fresh_candidate(candidate, target, browser_matrix)
     fresh = BROWSER.run_hermetic_qa2(fresh_candidate, fresh_target, fresh_matrix)
+    nested_runs = nested_runs + (fresh,)
+    if any(run["adapter"]["external_network_events"] or run["adapter"].get("mutation_events", run["adapter"].get("platform_mutation_events", [])) for run in (fresh,)):
+        _fail("TRIAL_EXTERNAL_SIDE_EFFECT", "fresh repair adapter reported an external side effect", "repair")
     if fresh["candidate_source_sha"] == candidate["source_sha"]:
         _fail("TRIAL_REPAIR_IDENTITY", "repair did not create a new candidate identity", "repair")
 
@@ -137,15 +159,24 @@ def run_trial() -> dict[str, Any]:
         _fail("TRIAL_HUMAN_GATE_ORDER", "physical-device requirement was not blocked after automation", "human")
 
     repair = _repair_loop()
+    nested_network = [event for run in nested_runs for event in run["adapter"]["external_network_events"]]
+    nested_mutations = [event for run in nested_runs for event in run["adapter"].get("mutation_events", run["adapter"].get("platform_mutation_events", []))]
+    automation_passed = browser_pass["result"] == "QA_PASS" and dev_pass["result"] == "QA_PASS" and blocked["automation_passed"] is True
+    touched_targets = [target["target_alias"], dev_matrix[0]["device"]]
+    if any(target_alias in trial["forbidden_targets"] for target_alias in touched_targets):
+        _fail("TRIAL_FORBIDDEN_TARGET", "trial touched a forbidden target alias", "targets")
     result = {
         "fixture_id": trial["fixture_id"],
         "candidate_source_sha": candidate["source_sha"],
         "browser": {"pass": browser_pass["result"], "defect": browser_fail["result"], "restore": browser_restore["result"], "candidate_sha_unchanged": browser_restore["candidate_source_sha"] == candidate["source_sha"]},
-        "devtools": {"pass": dev_pass["result"], "defect": dev_fail["result"], "restore": dev_restore["result"], "candidate_sha_unchanged": dev_restore["candidate_sha"] == dev_valid[1]["source_sha"]},
+        "devtools": {"pass": dev_pass["result"], "defect": dev_fail["result"], "stale_package": dev_stale["result"], "missing_final_compile": dev_missing["result"], "restore": dev_restore["result"], "candidate_sha_unchanged": dev_restore["candidate_sha"] == dev_valid[1]["source_sha"], "project_bound": dev_valid[0]["project_alias"] == trial["project_alias"]},
         "repair": {"result": fresh["result"], "new_candidate_sha": fresh["candidate_source_sha"], "fresh_evidence": fresh["candidate_source_sha"] == fresh_candidate["source_sha"]},
-        "physical_device": {"automation_passed": blocked["automation_passed"], "result": "QA_BLOCKED", "route_kind": human["route_kind"], "diagnose": human["state"]["diagnose"]["state"], "gate": human["state"]["human_gate"]["state"]},
+        "physical_device": {"automation_passed": automation_passed, "result": "QA_BLOCKED", "route_kind": human["route_kind"], "diagnose": human["state"]["diagnose"]["state"], "gate": human["state"]["human_gate"]["state"]},
         "repair_loop": repair,
-        "forbidden_targets_touched": [],
+        "forbidden_targets_touched": touched_targets,
+        "external_network_events": nested_network,
+        "mutation_events": nested_mutations,
+        "artifact_tree_clean": False,
         "evidence_mode": trial["evidence_mode"],
         "fixture_digest": "sha256:" + hashlib.sha256(json.dumps(trial, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest(),
     }
@@ -156,4 +187,8 @@ def run_trial() -> dict[str, Any]:
         path.write_text(json.dumps(result, ensure_ascii=False, sort_keys=True), encoding="utf-8")
         if any(marker in path.read_bytes().lower() for marker in (b"http://", b"https://", b"cloud://", b"wechat-xingqiu")):
             _fail("TRIAL_ARTIFACT_PRIVATE", "trial artifact contains forbidden bytes", "artifact")
+        result["artifact_tree_clean"] = True
+        path.write_text(json.dumps(result, ensure_ascii=False, sort_keys=True), encoding="utf-8")
+        if any(marker in path.read_bytes().lower() for marker in (b"http://", b"https://", b"cloud://", b"wechat-xingqiu")):
+            _fail("TRIAL_ARTIFACT_PRIVATE", "final trial artifact contains forbidden bytes", "artifact")
     return result

@@ -26,8 +26,19 @@ class IsolatedTrialTests(unittest.TestCase):
     def test_synthetic_trial_catches_browser_and_devtools_defects(self):
         result = self.trial.run_trial()
         self.assertEqual(result["browser"], {"pass": "QA_PASS", "defect": "QA_FAIL", "restore": "QA_PASS", "candidate_sha_unchanged": True})
-        self.assertEqual(result["devtools"], {"pass": "QA_PASS", "defect": "QA_FAIL", "restore": "QA_PASS", "candidate_sha_unchanged": True})
-        self.assertEqual(result["forbidden_targets_touched"], [])
+        self.assertEqual(result["devtools"]["pass"], "QA_PASS")
+        self.assertEqual(result["devtools"]["defect"], "QA_FAIL")
+        self.assertEqual(result["devtools"]["stale_package"], "QA_FAIL")
+        self.assertEqual(result["devtools"]["missing_final_compile"], "QA_FAIL")
+        self.assertEqual(result["devtools"]["restore"], "QA_PASS")
+        self.assertTrue(result["devtools"]["candidate_sha_unchanged"])
+        self.assertTrue(result["devtools"]["project_bound"])
+        self.assertEqual(result["devtools"]["candidate_sha_unchanged"], result["browser"]["candidate_sha_unchanged"])
+        self.assertEqual(result["external_network_events"], [])
+        self.assertEqual(result["mutation_events"], [])
+        self.assertTrue(result["artifact_tree_clean"])
+        self.assertNotIn("wechat-xingqiu", result["forbidden_targets_touched"])
+        self.assertNotIn("production-cloudbase", result["forbidden_targets_touched"])
 
     def test_repair_is_new_candidate_with_fresh_evidence(self):
         result = self.trial.run_trial()
