@@ -6,13 +6,14 @@
   "issue_contract_id": "static-reader-v1",
   "predecessor_receipt_ids": ["build-static-r1", "cloudbase-na-r1", "experience-na-r2", "device-na-r1"],
   "version_binding": {"source_sha": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", "experience_version_alias": "static-reader-v1", "device_version_alias": "static-reader-v1", "matches_predecessors": true},
+  "predecessor_bindings": {"experience": {"receipt_id": "experience-r1", "source_sha": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", "version_alias": "static-reader-v1"}, "device": {"receipt_id": "device-r1", "source_sha": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", "version_alias": "static-reader-v1"}},
   "payment": {"applicability": "not-applicable", "provider_truth": "not-applicable", "server_verification_ref": null, "not_applicable_reason": "The accepted static reader has no paid membership or transaction path."},
   "review": {"result": "pass", "readback_ref": "redacted:review-readback"},
   "release_readback": {"result": "pass", "released_version_alias": "static-reader-v1", "readback_ref": "redacted:release-readback"},
   "smoke": {"result": "pass", "evidence_ref": "redacted:release-smoke"},
   "human_authorizations": [
-    {"action_scope": "review", "state": "authorized", "authority_basis_ref": "redacted:review-owner-decision"},
-    {"action_scope": "formal-release", "state": "authorized", "authority_basis_ref": "redacted:release-owner-decision"}
+    {"gate_id": "gate-review-static-r1", "schema_version": 1, "contract_version": "ask-park.human-gate/v1", "state": "read-back", "action_type": "review", "action_scope": "review-static-r1", "authorizing_role": "owner", "requested_at": "2026-08-24T13:56:00Z", "authorized_at": "2026-08-24T13:57:00Z", "evidence_ref": "redacted:review-gate", "authority_basis": "owner decision recorded outside credentials"},
+    {"gate_id": "gate-release-static-r1", "schema_version": 1, "contract_version": "ask-park.human-gate/v1", "state": "read-back", "action_type": "formal-release", "action_scope": "release-static-r1", "authorizing_role": "owner", "requested_at": "2026-08-24T13:58:00Z", "authorized_at": "2026-08-24T13:59:00Z", "evidence_ref": "redacted:release-gate", "authority_basis": "owner decision recorded outside credentials"}
   ],
   "unproven_claims": ["No payment claim is made; future monetization requires a new contract."],
   "receipt": {

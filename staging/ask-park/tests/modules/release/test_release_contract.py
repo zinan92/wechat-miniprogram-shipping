@@ -30,6 +30,14 @@ class ReleaseContractTests(unittest.TestCase):
         self.assertIn(document["status"], {"released", "failed", "blocked-external"})
         self.assertIn(document["project_state"], {"active", "released"})
         self.assertTrue(document["version_binding"]["experience_version_alias"])
+        bindings = document["predecessor_bindings"]
+        self.assertEqual(bindings["experience"]["receipt_id"], "experience-r1")
+        self.assertEqual(bindings["device"]["receipt_id"], "device-r1")
+        if document["version_binding"]["matches_predecessors"]:
+            self.assertEqual(document["version_binding"]["source_sha"], bindings["experience"]["source_sha"])
+            self.assertEqual(bindings["experience"]["source_sha"], bindings["device"]["source_sha"])
+            self.assertEqual(document["version_binding"]["experience_version_alias"], bindings["experience"]["version_alias"])
+            self.assertEqual(document["version_binding"]["device_version_alias"], bindings["device"]["version_alias"])
         if document["version_binding"]["matches_predecessors"]:
             self.assertEqual(document["version_binding"]["experience_version_alias"], document["version_binding"]["device_version_alias"])
         payment = document["payment"]
@@ -43,9 +51,11 @@ class ReleaseContractTests(unittest.TestCase):
             self.assertIn(document[gate]["result"], {"pass", "fail", "blocked", "not-applicable"})
         self.assertTrue(document["human_authorizations"])
         for authorization in document["human_authorizations"]:
-            self.assertIn(authorization["state"], {"authorized", "awaiting-human", "denied", "expired"})
+            self.assertIn(authorization["state"], {"authorized", "executed", "read-back", "awaiting-human", "denied", "expired"})
             self.assertTrue(authorization["action_scope"])
-            self.assertTrue(authorization["authority_basis_ref"].startswith("redacted:"))
+            self.assertTrue(authorization["evidence_ref"].startswith("redacted:"))
+            gate_result = self.validator.validate_human_gate(authorization)
+            self.assertTrue(gate_result.valid, gate_result.errors)
         self.assertTrue(document["unproven_claims"])
         receipt_result = self.validator.validate_receipt(document["receipt"])
         self.assertTrue(receipt_result.valid, receipt_result.errors)

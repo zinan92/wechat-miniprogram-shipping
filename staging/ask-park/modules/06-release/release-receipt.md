@@ -33,9 +33,20 @@ smoke:
   result: pass | fail | blocked | not-applicable
   evidence_ref: redacted:... | null
 human_authorizations:
-  - action_scope: payment | legal | review | formal-release
-    state: authorized | awaiting-human | denied | expired
-    authority_basis_ref: redacted:...
+  - gate_id: stable gate alias
+    schema_version: 1
+    contract_version: ask-park.human-gate/v1
+    state: authorized | executed | read-back | awaiting-human | denied | expired
+    action_type: payment | legal | review | formal-release
+    action_scope: stable scope alias
+    authorizing_role: owner | reviewer | operator
+    requested_at: ISO-8601
+    authorized_at: ISO-8601 | null
+    evidence_ref: redacted:...
+    authority_basis: non-technical decision text
+predecessor_bindings:
+  experience: {receipt_id, source_sha, version_alias}
+  device: {receipt_id, source_sha, version_alias}
 unproven_claims: [explicit limitations]
 receipt:
   # Full S01 generic module receipt: source/issue/applicability,
@@ -61,4 +72,8 @@ receipt:
 - A version mismatch, stale predecessor, payment mismatch, or smoke failure
   keeps the project active and routes to Diagnose; no blind retry is inferred.
 - Human authorization records contain only redacted references and explicit
-  non-technical authority basis. Technical access is never authorization.
+  non-technical authority basis. Each record is a complete S01 human-gate
+  record and must pass the shared validator; technical access is never
+  authorization.
+- `version_binding` is derived from the recorded Experience/Device
+  `predecessor_bindings`, not from a free-standing `matches_predecessors` claim.

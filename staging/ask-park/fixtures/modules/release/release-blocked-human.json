@@ -6,13 +6,14 @@
   "issue_contract_id": "reader-vertical-slice",
   "predecessor_receipt_ids": ["build-r1", "cloudbase-r1", "experience-r1", "device-r1"],
   "version_binding": {"source_sha": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", "experience_version_alias": "experience-v1", "device_version_alias": "experience-v1", "matches_predecessors": true},
+  "predecessor_bindings": {"experience": {"receipt_id": "experience-r1", "source_sha": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", "version_alias": "experience-v1"}, "device": {"receipt_id": "device-r1", "source_sha": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", "version_alias": "experience-v1"}},
   "payment": {"applicability": "required", "provider_truth": "verified", "server_verification_ref": "redacted:payment-truth", "not_applicable_reason": null},
   "review": {"result": "blocked", "readback_ref": null},
   "release_readback": {"result": "blocked", "released_version_alias": null, "readback_ref": null},
   "smoke": {"result": "not-applicable", "evidence_ref": null},
   "human_authorizations": [
-    {"action_scope": "review", "state": "awaiting-human", "authority_basis_ref": "redacted:review-owner-decision"},
-    {"action_scope": "formal-release", "state": "awaiting-human", "authority_basis_ref": "redacted:release-owner-decision"}
+    {"gate_id": "gate-review-pending", "schema_version": 1, "contract_version": "ask-park.human-gate/v1", "state": "awaiting-human", "action_type": "review", "action_scope": "review-pending", "authorizing_role": "owner", "requested_at": "2026-08-24T14:00:00Z", "authorized_at": null, "evidence_ref": "redacted:review-gate", "authority_basis": "owner decision pending"},
+    {"gate_id": "gate-release-pending", "schema_version": 1, "contract_version": "ask-park.human-gate/v1", "state": "awaiting-human", "action_type": "formal-release", "action_scope": "release-pending", "authorizing_role": "owner", "requested_at": "2026-08-24T14:01:00Z", "authorized_at": null, "evidence_ref": "redacted:release-gate", "authority_basis": "owner decision pending"}
   ],
   "unproven_claims": ["Review and formal release have not been read back."],
   "receipt": {

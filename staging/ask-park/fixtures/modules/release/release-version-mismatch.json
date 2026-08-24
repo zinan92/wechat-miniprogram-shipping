@@ -6,11 +6,12 @@
   "issue_contract_id": "reader-vertical-slice",
   "predecessor_receipt_ids": ["build-r1", "cloudbase-r1", "experience-r1", "device-r1"],
   "version_binding": {"source_sha": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", "experience_version_alias": "experience-v2", "device_version_alias": "experience-v1", "matches_predecessors": false},
+  "predecessor_bindings": {"experience": {"receipt_id": "experience-r1", "source_sha": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", "version_alias": "experience-v2"}, "device": {"receipt_id": "device-r1", "source_sha": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", "version_alias": "experience-v1"}},
   "payment": {"applicability": "required", "provider_truth": "verified", "server_verification_ref": "redacted:payment-truth", "not_applicable_reason": null},
   "review": {"result": "not-applicable", "readback_ref": null},
   "release_readback": {"result": "fail", "released_version_alias": "experience-v2", "readback_ref": "redacted:release-version-mismatch"},
   "smoke": {"result": "not-applicable", "evidence_ref": null},
-  "human_authorizations": [{"action_scope": "formal-release", "state": "authorized", "authority_basis_ref": "redacted:release-owner-decision"}],
+  "human_authorizations": [{"gate_id": "gate-release-mismatch", "schema_version": 1, "contract_version": "ask-park.human-gate/v1", "state": "authorized", "action_type": "formal-release", "action_scope": "release-mismatch", "authorizing_role": "owner", "requested_at": "2026-08-24T14:02:00Z", "authorized_at": "2026-08-24T14:03:00Z", "evidence_ref": "redacted:release-gate", "authority_basis": "owner decision recorded outside credentials"}],
   "unproven_claims": ["No Release claim is made because predecessor version identity mismatches."],
   "receipt": {
     "receipt_id": "release-mismatch-r1",
