@@ -192,18 +192,23 @@ def stage_canonical_install(source_root: Path, staging_parent: Path, *, scanned_
     destination = staging_parent / "ask-park"
     if destination.exists():
         _fail("MIGRATION_DESTINATION_EXISTS", "staging destination must be a new controlled directory", "staging_parent")
-    staging_parent.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(source_root, destination, symlinks=False)
-    layout_spec = importlib.util.spec_from_file_location("migration_layout", LAYOUT)
-    if layout_spec is None or layout_spec.loader is None:  # pragma: no cover
-        raise ImportError("cannot load package layout validator")
-    layout = importlib.util.module_from_spec(layout_spec)
-    layout_spec.loader.exec_module(layout)
-    errors = layout.validate_package_layout(destination, mode="staged")
-    if errors:
-        _fail("MIGRATION_CANONICAL_VALIDATION", "staged package failed canonical validation", "staging")
-    manifest = package_manifest(destination)
-    return {"checkpoint": "staged", "staging_ref": "redacted:ask-park-staging", "manifest": manifest, "rollback_safe": True, "scope_verified": True}
+    try:
+        staging_parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(source_root, destination, symlinks=False)
+        layout_spec = importlib.util.spec_from_file_location("migration_layout", LAYOUT)
+        if layout_spec is None or layout_spec.loader is None:  # pragma: no cover
+            raise ImportError("cannot load package layout validator")
+        layout = importlib.util.module_from_spec(layout_spec)
+        layout_spec.loader.exec_module(layout)
+        errors = layout.validate_package_layout(destination, mode="staged")
+        if errors:
+            _fail("MIGRATION_CANONICAL_VALIDATION", "staged package failed canonical validation", "staging")
+        manifest = package_manifest(destination)
+        return {"checkpoint": "staged", "staging_ref": "redacted:ask-park-staging", "manifest": manifest, "rollback_safe": True, "scope_verified": True}
+    except Exception:
+        if destination.exists():
+            shutil.rmtree(destination)
+        raise
 
 
 def pre_migration_receipt(inventory: Mapping[str, Any], staged: Mapping[str, Any], *, repository_identity: str, history_ref: str) -> dict[str, Any]:

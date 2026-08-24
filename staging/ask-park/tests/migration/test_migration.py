@@ -130,6 +130,20 @@ class MigrationTests(unittest.TestCase):
             self.assertEqual(raised.exception.code, "MIGRATION_SOURCE_PRIVATE")
             self.assertFalse((Path(directory) / "out" / "ask-park").exists())
 
+    def test_invalid_canonical_package_cleans_partial_staging(self):
+        with tempfile.TemporaryDirectory(prefix="migration-invalid-") as directory:
+            source = Path(directory) / "source"
+            source.mkdir()
+            (source / "SKILL.md").write_text("---\nname: ask-park\ndescription: test\n---\n", encoding="utf-8")
+            (source / "agents").mkdir()
+            (source / "agents" / "openai.yaml").write_text("interface: {}\n", encoding="utf-8")
+            # Missing required package directories makes canonical validation fail.
+            destination = Path(directory) / "out"
+            with self.assertRaises(self.migration.MigrationError) as raised:
+                self.migration.stage_canonical_install(source, destination, scanned_roots=[])
+            self.assertEqual(raised.exception.code, "MIGRATION_CANONICAL_VALIDATION")
+            self.assertFalse((destination / "ask-park").exists())
+
     def test_rollback_rejects_repository_workspace(self):
         with self.assertRaises(self.migration.MigrationError) as raised:
             self.migration.rollback_checkpoint(REPO_ROOT, "staging-failure")
