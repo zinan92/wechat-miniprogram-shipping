@@ -1,0 +1,15 @@
+{
+  "worker_identity": "worker-device-a",
+  "evaluator_identity": "evaluator-fresh-b",
+  "fresh_context": true,
+  "read_only": true,
+  "candidate_sha_before": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "candidate_sha_after": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "bounded_inputs": ["issue-24", "qa2-evidence-r1"],
+  "exclusions": ["live-provider", "credentials", "private-data"],
+  "verdict": "QA_BLOCKED",
+  "findings": [],
+  "advisory_earliest_layer": null,
+  "automation_passed": true,
+  "human_gate_required": true
+}
