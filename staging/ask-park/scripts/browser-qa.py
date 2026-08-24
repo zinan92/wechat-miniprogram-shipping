@@ -16,6 +16,7 @@ from typing import Any, Mapping
 
 SHA_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
 ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
+ISO_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 REQUIRED_STATES = {"loading", "empty", "error", "locked", "long-title", "narrow-screen", "accessibility-name", "tap-target"}
 
 
@@ -69,6 +70,8 @@ def validate_site(site: Mapping[str, Any], *, target: bool = False) -> dict[str,
         _fail("BROWSER_TARGET_ALIAS", "target alias is required", "site.target_alias")
     if not target and (not _alias(site.get("matrix_identity_alias")) or not _alias(site.get("compile_provenance")) or not _digest(site.get("render_digest"))):
         _fail("BROWSER_COMPILE_PROVENANCE", "candidate requires matrix identity, compile provenance, and render digest", "site")
+    if target and not _digest(site.get("render_digest")):
+        _fail("BROWSER_RENDER_PROVENANCE", "target requires render digest", "site.render_digest")
     return copy.deepcopy(dict(site))
 
 
@@ -77,10 +80,10 @@ def validate_matrix(matrix: list[Mapping[str, Any]]) -> dict[str, Any]:
         _fail("BROWSER_MATRIX_REQUIRED", "Browser matrix must be non-empty", "matrix")
     states = set()
     for row in matrix:
-        allowed = {"route", "viewport", "role", "data_state", "state", "tool", "runtime", "before_hash", "after_hash", "source_identity", "final_compile_provenance"}
+        allowed = {"route", "viewport", "role", "data_state", "state", "tool", "runtime", "before_hash", "after_hash", "source_identity", "final_compile_provenance", "observed_at"}
         if any(key not in allowed for key in row):
             _fail("BROWSER_MATRIX_UNKNOWN_FIELD", "matrix row contains an undeclared field", "matrix.<key>")
-        for key in ("route", "viewport", "role", "data_state", "state", "tool", "runtime", "before_hash", "after_hash", "source_identity", "final_compile_provenance"):
+        for key in ("route", "viewport", "role", "data_state", "state", "tool", "runtime", "before_hash", "after_hash", "source_identity", "final_compile_provenance", "observed_at"):
             if key not in row:
                 _fail("BROWSER_MATRIX_REQUIRED", "matrix row field is required", f"matrix.{key}")
         if not all(_alias(row[key]) for key in ("route", "viewport", "role", "data_state", "state", "tool", "runtime", "source_identity", "final_compile_provenance")):
@@ -89,6 +92,8 @@ def validate_matrix(matrix: list[Mapping[str, Any]]) -> dict[str, Any]:
             _fail("BROWSER_MATRIX_HASH", "matrix before/after hashes must be full SHA-256", "matrix")
         if any(not _safe_text(value) for value in row.values() if isinstance(value, str)):
             _fail("BROWSER_MATRIX_PRIVATE", "matrix row contains a private value", "matrix")
+        if not ISO_RE.fullmatch(str(row["observed_at"])):
+            _fail("BROWSER_MATRIX_TIME", "matrix observed_at must be ISO-8601", "matrix.observed_at")
         states.add(row["state"])
     missing = REQUIRED_STATES - states
     if missing:
@@ -196,7 +201,7 @@ def capture_qa1(candidate: Mapping[str, Any], matrix: list[Mapping[str, Any]], *
         "browser_first": True,
         "evidence_mode": "sanitized-persisted",
         "candidate_source_sha": site["source_sha"],
-        "captures": [{"route": row["route"], "viewport": row["viewport"], "before_ref": "redacted:qa1-before", "after_ref": "redacted:qa1-after", "before_hash": row["before_hash"], "after_hash": row["after_hash"], "sanitized": True} for row in matrix],
+        "captures": [{"route": row["route"], "viewport": row["viewport"], "role": row["role"], "data_state": row["data_state"], "state": row["state"], "tool": row["tool"], "runtime": row["runtime"], "before_ref": "redacted:qa1-before", "after_ref": "redacted:qa1-after", "before_hash": row["before_hash"], "after_hash": row["after_hash"], "source_identity": row["source_identity"], "final_compile_provenance": row["final_compile_provenance"], "captured_at": row["observed_at"], "sanitized": True} for row in matrix],
         "external_network_events": [],
         "mutation_events": [],
     }
