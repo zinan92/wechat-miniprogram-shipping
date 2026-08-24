@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "module": "diagnose",
+  "incident_id": "incident-runtime-regression-1",
+  "diagnose_state": "active",
+  "outcome": "unresolved",
+  "interrupted_module": "experience",
+  "post_recovery_current_module": "experience",
+  "recovery_goal": "Restore the reader's stable loading and error behavior without changing the accepted scope.",
+  "symptom": {
+    "statement": "The reader intermittently remains in loading state after a refresh.",
+    "observed_at": "2026-08-24T11:20:00Z",
+    "source_ref": "redacted:runtime-observation"
+  },
+  "failure_class": "runtime-drift",
+  "observed_facts": [
+    {
+      "fact": "The symptom is reproduced once in the current experience path and not reproduced in the mock path.",
+      "evidence_ref": "redacted:mock-target-comparison",
+      "proves": "The paths differ in observed behavior.",
+      "cannot_prove": "It does not identify whether the cause is package, network, or runtime state."
+    }
+  ],
+  "hypotheses": [
+    {
+      "id": "runtime-request-timeout",
+      "statement": "A bounded request timeout leaves the loading state without a stable error.",
+      "test": "Trace one request with a deterministic timeout fixture and inspect the state transition.",
+      "falsifier": "A completed request with a stable error state rejects this hypothesis.",
+      "status": "open"
+    },
+    {
+      "id": "stale-package-runtime",
+      "statement": "The experience package is stale relative to the source receipt.",
+      "test": "Read back package/source identity before attempting a new upload.",
+      "falsifier": "Matching identities reject this hypothesis.",
+      "status": "open"
+    }
+  ],
+  "causal_invalidation_proposal": {
+    "confirmed": false,
+    "earliest_module": null,
+    "changed_fields": [],
+    "invalidated_receipt_ids": [],
+    "reason_code": null
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "action": "Compare mock and current request state transitions without mutation.",
+      "result": "Difference observed; root cause remains open."
+    },
+    {
+      "attempt": 2,
+      "action": "Read package and runtime identity from existing evidence.",
+      "result": "Identity evidence is incomplete; no upload retry authorized."
+    }
+  ],
+  "bounded_next_action": "Choose one timeout or identity hypothesis for a read-only reproduction before attempt three.",
+  "human_gate_required": false,
+  "unproven_claims": ["The source, package, network, and target runtime are not yet causally reconciled."],
+  "load_contracts": [
+    "references/status-contract.md",
+    "references/evidence-contract.md",
+    "references/human-gates-contract.md",
+    "references/transition-contract.md",
+    "modules/07-diagnose/MODULE.md",
+    "modules/04-experience/MODULE.md"
+  ]
+}
