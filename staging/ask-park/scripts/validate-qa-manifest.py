@@ -25,7 +25,7 @@ REDacted_RE = re.compile(r"^redacted:[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 ISO_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$")
 EVIDENCE_MODES = {"sanitized-persisted", "ephemeral-only", "approved-store-reference"}
 MODULES = {"plan", "build", "cloudbase", "experience", "device", "release"}
-FORBIDDEN_KEY_PARTS = ("openid", "payment", "qr", "credential", "secret", "token", "password", "filename", "bytes", "private_key", "access_key", "api_key", "cookie")
+FORBIDDEN_KEY_PARTS = ("openid", "payment", "qr", "credential", "secret", "token", "password", "filename", "bytes", "private_key", "access_key", "api_key", "cookie", "environment_id", "env_id", "appid", "url", "uri", "target_url")
 
 
 class ValidationError:
@@ -97,7 +97,7 @@ def _walk_privacy(value: Any, path: str, errors: _Collector) -> None:
         for index, child in enumerate(value):
             _walk_privacy(child, f"{path}[{index}]", errors)
     elif isinstance(value, str):
-        if value.startswith(("http://", "https://", "file://", "/Users/", "/private/", "~/")):
+        if value.startswith(("http://", "https://", "file://", "cloud://", "/Users/", "/private/", "~/")):
             errors.add("QA_PRIVATE_VALUE", path, "private target value is not persistable")
 
 
@@ -105,15 +105,27 @@ def _canonical_json(value: Any) -> str:
     if value is None or isinstance(value, (bool, int, str)):
         return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
     if isinstance(value, float):
-        if not math.isfinite(value) or not value.is_integer():
-            raise ValueError("non-integer JSON number is not accepted by this manifest profile")
-        return json.dumps(int(value), separators=(",", ":"))
+        if not math.isfinite(value):
+            raise ValueError("non-finite JSON number is not accepted")
+        if value == 0:
+            return "0"
+        text = json.dumps(value, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+        if text.endswith(".0"):
+            text = text[:-2]
+        if "e" in text:
+            mantissa, exponent = text.split("e", 1)
+            sign = ""
+            if exponent.startswith(("+", "-")):
+                sign, exponent = exponent[0], exponent[1:]
+            exponent = exponent.lstrip("0") or "0"
+            text = mantissa + "e" + sign + exponent
+        return text
     if isinstance(value, list):
         return "[" + ",".join(_canonical_json(item) for item in value) + "]"
     if isinstance(value, dict):
         return "{" + ",".join(
             json.dumps(key, ensure_ascii=False, separators=(",", ":")) + ":" + _canonical_json(value[key])
-            for key in sorted(value)
+            for key in sorted(value, key=lambda item: str(item).encode("utf-16be", "surrogatepass"))
         ) + "}"
     raise ValueError("unsupported JSON value")
 
@@ -138,11 +150,44 @@ def _check_digest(document: dict[str, Any], errors: _Collector, path: str = "man
         errors.add("QA_DIGEST_MISMATCH", path, "digest does not match canonical manifest bytes")
 
 
+def _check_evidence_mode(document: dict[str, Any], prefix: str, errors: _Collector) -> None:
+    mode = document.get("evidence_mode")
+    if mode not in EVIDENCE_MODES:
+        errors.add("QA_EVIDENCE_MODE", f"{prefix}.evidence_mode", "unsupported evidence mode")
+        return
+    refs = document.get("evidence_refs", [])
+    if not isinstance(refs, list):
+        errors.add("QA_EVIDENCE_REFS", f"{prefix}.evidence_refs", "evidence_refs must be a list")
+    if mode == "ephemeral-only" and refs:
+        errors.add("QA_EPHEMERAL_REFERENCE", f"{prefix}.evidence_refs", "ephemeral evidence cannot persist refs")
+    if mode == "approved-store-reference":
+        governance = document.get("store_governance")
+        if not isinstance(governance, dict):
+            errors.add("QA_STORE_GOVERNANCE", f"{prefix}.store_governance", "approved-store evidence requires governance")
+        else:
+            for key in ("audience", "retention", "deletion", "access_control", "redacted_ref"):
+                if not isinstance(governance.get(key), str) or not governance[key].strip():
+                    errors.add("QA_STORE_GOVERNANCE", f"{prefix}.store_governance.{key}", "governance field is required")
+            if not _is_redacted(governance.get("redacted_ref")):
+                errors.add("QA_STORE_GOVERNANCE", f"{prefix}.store_governance.redacted_ref", "store reference must be redacted")
+
+
 def _check_common_manifest(document: Any, kind: str, errors: _Collector) -> None:
     if not isinstance(document, dict):
         errors.add("QA_TYPE", "manifest", "manifest must be a JSON object")
         return
     _walk_privacy(document, "manifest", errors)
+    allowed = {
+        "schema_version", "kind", "digest", "qa_run_id", "issue_contract_id",
+        "issue_contract_version", "origin_module", "candidate", "target_manifest_digest",
+        "candidate_manifest_digest", "target", "predecessor_receipt_ids", "qa1_evidence_hashes",
+        "result", "gate", "target_receipt_id", "observed_at", "evidence_mode", "evidence_refs",
+        "evidence_hashes", "passed_checks", "limitations", "automated_checks_passed",
+        "store_governance", "findings",
+    }
+    for key in document:
+        if key not in allowed:
+            errors.add("QA_UNKNOWN_FIELD", "manifest.<key>", "field is not in the QA schema")
     if document.get("schema_version") != 1:
         errors.add("QA_SCHEMA_VERSION", "manifest.schema_version", "schema_version must be 1")
     if document.get("kind") != kind:
@@ -151,10 +196,7 @@ def _check_common_manifest(document: Any, kind: str, errors: _Collector) -> None
     for key in ("qa_run_id", "issue_contract_id"):
         if not _is_alias(document.get(key)):
             errors.add("QA_ALIAS", f"manifest.{key}", "field must be a stable alias")
-    if document.get("evidence_mode") not in EVIDENCE_MODES:
-        errors.add("QA_EVIDENCE_MODE", "manifest.evidence_mode", "unsupported evidence mode")
-    if document.get("evidence_mode") == "ephemeral-only" and document.get("evidence_refs"):
-        errors.add("QA_EPHEMERAL_REFERENCE", "manifest.evidence_refs", "ephemeral evidence cannot persist refs")
+    _check_evidence_mode(document, "manifest", errors)
 
 
 def _check_hash_list(value: Any, path: str, errors: _Collector) -> None:
@@ -167,14 +209,16 @@ def validate_candidate(document: Any) -> ValidationResult:
     _check_common_manifest(document, "qa-candidate", errors)
     if isinstance(document, dict):
         errors.required(document, ("issue_contract_version", "origin_module", "candidate", "predecessor_receipt_ids", "qa1_evidence_hashes"), "manifest")
+        if document.get("target_manifest_digest") is not None:
+            errors.add("QA_TARGET_BINDING", "manifest.target_manifest_digest", "candidate manifest must exist before target and cannot bind one")
         if document.get("origin_module") not in MODULES:
             errors.add("QA_ORIGIN_MODULE", "manifest.origin_module", "origin_module must be sequential")
         candidate = document.get("candidate")
         if not isinstance(candidate, dict):
             errors.add("QA_CANDIDATE", "manifest.candidate", "candidate must be an object")
         else:
-            if not isinstance(candidate.get("source_sha"), str):
-                errors.add("QA_SOURCE_SHA", "manifest.candidate.source_sha", "source SHA is required")
+            if not _is_digest(candidate.get("source_sha")):
+                errors.add("QA_SOURCE_SHA", "manifest.candidate.source_sha", "source SHA must be a full digest")
             for key in ("lockfile_digest", "build_config_digest", "build_artifact_digest", "native_project_config_digest", "runtime_config_digest"):
                 if candidate.get(key) is not None and not _is_digest(candidate[key]):
                     errors.add("QA_DIGEST", f"manifest.candidate.{key}", "candidate digest is invalid")
@@ -214,7 +258,7 @@ def validate_result(document: Any) -> ValidationResult:
     errors = _Collector()
     _check_common_manifest(document, "qa-result", errors)
     if isinstance(document, dict):
-        errors.required(document, ("result", "gate", "candidate_manifest_digest", "target_manifest_digest", "evidence_hashes", "limitations"), "manifest")
+        errors.required(document, ("result", "gate", "candidate_manifest_digest", "target_manifest_digest", "target_receipt_id", "predecessor_receipt_ids", "observed_at", "evidence_hashes", "passed_checks", "limitations"), "manifest")
         if document.get("result") not in {"none", "QA_PASS", "QA_FAIL", "QA_BLOCKED"}:
             errors.add("QA_RESULT", "manifest.result", "result is outside the QA enum")
         if document.get("gate") not in {"contract", "qa-1", "target", "qa-2", "evidence", "final"}:
@@ -226,6 +270,14 @@ def validate_result(document: Any) -> ValidationResult:
             errors.add("QA_TARGET_BINDING", "manifest.target_manifest_digest", "pre-target result cannot bind a target")
         if not pre_target and not _is_digest(document.get("target_manifest_digest")):
             errors.add("QA_TARGET_BINDING", "manifest.target_manifest_digest", "post-target result must bind a target")
+        if not pre_target and not _is_alias(document.get("target_receipt_id")):
+            errors.add("QA_TARGET_RECEIPT", "manifest.target_receipt_id", "post-target result requires a target receipt alias")
+        if not pre_target and not isinstance(document.get("predecessor_receipt_ids"), list):
+            errors.add("QA_PREDECESSORS", "manifest.predecessor_receipt_ids", "post-target result requires predecessor receipt aliases")
+        if not _is_iso(document.get("observed_at")):
+            errors.add("QA_TIMESTAMP", "manifest.observed_at", "observed_at must be ISO-8601")
+        if not isinstance(document.get("passed_checks"), list) or not document.get("passed_checks"):
+            errors.add("QA_CHECKS", "manifest.passed_checks", "passed_checks must be a non-empty list")
         _check_hash_list(document.get("evidence_hashes"), "manifest.evidence_hashes", errors)
         if not isinstance(document.get("limitations"), list) or not document.get("limitations"):
             errors.add("QA_LIMITATIONS", "manifest.limitations", "limitations are required")
@@ -233,6 +285,8 @@ def validate_result(document: Any) -> ValidationResult:
             errors.add("QA_EPHEMERAL_REFERENCE", "manifest.evidence_refs", "ephemeral result cannot persist refs")
         if document.get("result") == "QA_BLOCKED" and document.get("automated_checks_passed") is not True:
             errors.add("QA_BLOCKED_AUTOMATION", "manifest.automated_checks_passed", "BLOCKED requires automation passed")
+        if document.get("result") == "QA_FAIL" and (not isinstance(document.get("findings"), list) or not document.get("findings")):
+            errors.add("QA_FINDINGS", "manifest.findings", "QA_FAIL requires observable findings")
     return ValidationResult("result", document if isinstance(document, dict) else {}, errors.errors)
 
 
@@ -242,16 +296,20 @@ def validate_evidence(document: Any) -> ValidationResult:
         errors.add("QA_TYPE", "evidence", "evidence row must be an object")
         return ValidationResult("evidence", {}, errors.errors)
     _walk_privacy(document, "evidence", errors)
-    for key in ("surface", "route", "viewport", "role", "data_state", "equivalence", "tool", "after_evidence", "limitations"):
+    for key in ("surface", "route", "viewport", "role", "data_state", "equivalence", "tool", "evidence_mode", "after_evidence", "limitations"):
         if key not in document:
             errors.add("QA_REQUIRED_FIELD", f"evidence.{key}", "required evidence field is missing")
+    _check_evidence_mode(document, "evidence", errors)
+    for key in ("surface", "route", "viewport", "role", "data_state"):
+        if not isinstance(document.get(key), str) or not document[key].strip():
+            errors.add("QA_EVIDENCE_FIELD", f"evidence.{key}", "evidence field must be non-empty")
     if document.get("equivalence") not in {"exact", "approved-reference", "historical-exception"}:
         errors.add("QA_EQUIVALENCE", "evidence.equivalence", "equivalence is invalid")
     tool = document.get("tool")
     if not isinstance(tool, dict) or not all(isinstance(tool.get(key), str) and tool.get(key) for key in ("name", "version", "runtime_or_base_library")):
         errors.add("QA_TOOL", "evidence.tool", "tool/runtime identity is required")
     before = document.get("before_evidence")
-    if before is not None and (not isinstance(before, dict) or not _is_digest(before.get("sha256")) or not _is_iso(before.get("captured_at"))):
+    if before is not None and (not isinstance(before, dict) or not _is_redacted(before.get("ref")) or not _is_digest(before.get("sha256")) or not _is_iso(before.get("captured_at")) or not isinstance(before.get("identity"), str) or not before.get("identity")):
         errors.add("QA_BEFORE", "evidence.before_evidence", "before evidence identity is invalid")
     after = document.get("after_evidence")
     if not isinstance(after, dict):
@@ -260,6 +318,8 @@ def validate_evidence(document: Any) -> ValidationResult:
         for key in ("ref", "source_or_package_identity", "final_compile_receipt_id"):
             if not isinstance(after.get(key), str) or not after.get(key):
                 errors.add("EVIDENCE_FINAL_COMPILE" if key == "final_compile_receipt_id" else "QA_AFTER", f"evidence.after_evidence.{key}", "after evidence field is required")
+        if not _is_redacted(after.get("ref")):
+            errors.add("QA_AFTER_REF", "evidence.after_evidence.ref", "after evidence ref must be redacted")
         if not _is_digest(after.get("sha256")):
             errors.add("QA_AFTER_HASH", "evidence.after_evidence.sha256", "after evidence hash is required")
         if not _is_iso(after.get("captured_at")):
@@ -272,7 +332,13 @@ def validate_qa_state(document: Any) -> ValidationResult:
     if not isinstance(document, dict) or not isinstance(document.get("qa"), dict):
         errors.add("QA_STATE_TYPE", "qa", "qa state must be an object")
         return ValidationResult("qa-state", document if isinstance(document, dict) else {}, errors.errors)
+    _walk_privacy(document, "qa-state", errors)
+    if document.get("schema_version") != 1 or document.get("kind") != "qa-state":
+        errors.add("QA_SCHEMA_VERSION", "qa-state", "qa-state requires schema_version 1 and kind qa-state")
+    if any(key not in {"schema_version", "kind", "qa"} for key in document):
+        errors.add("QA_UNKNOWN_FIELD", "qa-state.<key>", "field is not in the QA state schema")
     qa = document["qa"]
+    errors.required(qa, ("execution_state", "result", "control_outcome", "gate", "candidate_manifest_digest", "target_manifest_digest", "attempt", "max_attempts", "origin_module", "result_receipt_id"), "qa")
     if qa.get("execution_state") not in {"unavailable", "ready", "running", "complete"}:
         errors.add("QA_STATE", "qa.execution_state", "execution state is invalid")
     if qa.get("result") not in {"none", "QA_PASS", "QA_FAIL", "QA_BLOCKED"}:
@@ -283,6 +349,12 @@ def validate_qa_state(document: Any) -> ValidationResult:
         errors.add("QA_PREREQUISITE", "qa.control_outcome", "unavailable evaluator requires prerequisite-missing")
     if qa.get("result") == "QA_BLOCKED" and qa.get("execution_state") != "complete":
         errors.add("QA_STATE", "qa.execution_state", "blocked result must be complete")
+    if qa.get("execution_state") == "unavailable" and qa.get("result") == "QA_BLOCKED":
+        errors.add("QA_PREREQUISITE", "qa.result", "unavailable evaluator cannot produce BLOCKED")
+    if qa.get("candidate_manifest_digest") is not None and not _is_digest(qa.get("candidate_manifest_digest")):
+        errors.add("QA_DIGEST", "qa.candidate_manifest_digest", "candidate binding must be a full digest or null")
+    if qa.get("target_manifest_digest") is not None and not _is_digest(qa.get("target_manifest_digest")):
+        errors.add("QA_DIGEST", "qa.target_manifest_digest", "target binding must be a full digest or null")
     if not isinstance(qa.get("attempt"), int) or qa.get("attempt") < 1 or qa.get("attempt") > 3:
         errors.add("QA_ATTEMPT", "qa.attempt", "attempt must be 1..3")
     if qa.get("max_attempts") != 3:

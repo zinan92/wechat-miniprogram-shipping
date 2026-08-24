@@ -94,6 +94,18 @@ class QAManifestContractTests(unittest.TestCase):
         self.assertFalse(validation.valid)
         self.assertIn("QA_EPHEMERAL_REFERENCE", {error.code for error in validation.errors})
 
+    def test_approved_store_requires_governance_and_state_schema_is_complete(self):
+        candidate = self.fixture("candidate-valid.json")
+        candidate["evidence_mode"] = "approved-store-reference"
+        validation = self.validator.validate_document(candidate, "candidate")
+        self.assertFalse(validation.valid)
+        self.assertIn("QA_STORE_GOVERNANCE", {error.code for error in validation.errors})
+        state = self.fixture("qa-state-unavailable.json")
+        del state["qa"]["gate"]
+        validation = self.validator.validate_document(state, "qa-state")
+        self.assertFalse(validation.valid)
+        self.assertIn("QA_REQUIRED_FIELD", {error.code for error in validation.errors})
+
     def test_privacy_and_malformed_negative_fixtures_fail(self):
         for name in ("candidate-private-invalid.json", "candidate-duplicate-key.json", "target-stale-invalid.json"):
             document = json.loads((FIXTURES / name).read_text(encoding="utf-8"))
@@ -109,6 +121,12 @@ class QAManifestContractTests(unittest.TestCase):
         self.assertNotEqual(candidate["digest"], malformed["digest"])
         self.assertFalse(self.validator.validate_document(malformed, "candidate").valid)
         self.assertValid(restored, "candidate")
+        failed = self.fixture("result-qa1-valid.json")
+        failed["result"] = "QA_FAIL"
+        failed["findings"] = ["known fixture defect"]
+        failed["digest"] = self.validator.canonical_digest(failed)
+        self.assertValid(failed, "result")
+        self.assertEqual(failed["candidate_manifest_digest"], candidate["digest"])
 
     def test_docs_define_qa_state_manifest_and_matrix_contracts(self):
         for name, phrases in {
