@@ -187,6 +187,10 @@ class RoutingTests(RouterTestCase):
         decision = self.router.route(state, "continuation", changed_fields=["source.commit_sha"])
         self.assertEqual(decision.control_outcome, "needs-human-state-reconciliation")
         self.assertEqual(decision.reason_code, "causal-receipt-missing")
+        for empty in ({}, []):
+            decision = self.router.route(state, "continuation", receipts=empty, changed_fields=["source.commit_sha"])
+            self.assertEqual(decision.control_outcome, "needs-human-state-reconciliation")
+            self.assertEqual(decision.reason_code, "causal-receipt-missing")
 
 
 if __name__ == "__main__":

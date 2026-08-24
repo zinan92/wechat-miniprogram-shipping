@@ -5,8 +5,9 @@ description: Route new, takeover, failure, continuation, and release work for a 
 
 # Ask Park
 
-Ask Park is the one user-facing entry for Mini Program shipping. Use `$ask-park`
-(or `/ask-park` in clients that expose slash commands) for a new project,
+Ask Park is the one user-facing entry for Mini Program shipping. Its canonical
+skill invocation is `$ask-park`; clients that expose slash commands may render
+the same entry as `/ask-park` (this is not a second command). Use it for a new project,
 takeover, failure, continuation, or release request. The staged package is not
 discoverable until the final migration story; this entry is nevertheless the
 complete contract that later migration will publish.

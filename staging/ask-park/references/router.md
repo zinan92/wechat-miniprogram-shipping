@@ -105,10 +105,12 @@ The rendered response then has exactly four headings, in order:
 ## Progressive disclosure
 
 The router loads the shared state, evidence, human-gate, and transition
-contracts plus the selected module path. During failure recovery it also loads
-Diagnose and the interrupted module. Module implementations, CloudBase
-adapters, screenshots, browser/DevTools workflows, and QA manifests are later
-stories; this router does not pretend to prove them.
+contracts plus the selected module path. In S02, module paths are planned
+disclosure targets until S03–S09 add their `MODULE.md` files; the router does
+not claim that a missing future module has been loaded. During failure recovery
+it also loads Diagnose and the interrupted module. Module implementations,
+CloudBase adapters, screenshots, browser/DevTools workflows, and QA manifests
+are later stories; this router does not pretend to prove them.
 
 ## Executable seam
 

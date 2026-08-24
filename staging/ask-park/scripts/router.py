@@ -278,14 +278,21 @@ def route(
     reason = "earliest-required-gap"
 
     if changed:
+        supplied_receipts: Mapping[str, Mapping[str, Any]] | list[Mapping[str, Any]] | None
         if receipts is None:
+            supplied_receipts = None
+        elif isinstance(receipts, Mapping):
+            supplied_receipts = dict(receipts)
+        else:
+            supplied_receipts = list(receipts)
+        if not supplied_receipts:
             control_outcome = "needs-human-state-reconciliation"
             reason = "causal-receipt-missing"
         else:
             try:
                 next_state, invalidation = _LIFECYCLE.invalidate_state(
                     next_state,
-                    receipts,
+                    supplied_receipts,
                     changed_fields=changed,
                     reason_code=reason_code,
                 )
