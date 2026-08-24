@@ -293,6 +293,7 @@ def route_qa_result(
         "incident_id": proposal["incident_id"],
         "interrupted_module": proposal["interrupted_module"],
         "recovery_module": recovery_module,
+        "post_recovery_current_module": recovery_module,
         "recovery_goal": proposal["recovery_goal"],
         "causal_confirmed": proposal["confirmed"],
         "earliest_invalidated_module": proposal["earliest_module"],
