@@ -88,11 +88,14 @@ def _safe(value: Any) -> bool:
 class RecordReplayAdapter:
     """Read deterministic records and make every external action fail closed."""
 
-    def __init__(self, records: Mapping[str, Any], *, allowed_aliases: set[str] | None = None) -> None:
+    def __init__(self, records: Mapping[str, Any], *, allowed_aliases: set[str] | None = None, allowed_inputs: set[str] | None = None, input_alias: str | None = None, enforce_bounds: bool = True) -> None:
         if not isinstance(records, Mapping) or not _safe(records):
             _fail("FORWARD_RECORD_PRIVATE", "raw fixture records contain private values or fields", "records")
         self.records = copy.deepcopy(dict(records))
         self.allowed_aliases = set(allowed_aliases or self.records)
+        self.allowed_inputs = set(allowed_inputs or ())
+        self.input_alias = input_alias
+        self.enforce_bounds = enforce_bounds
         self.events: list[dict[str, str]] = []
 
     def read(self, alias: str) -> Any:
@@ -100,6 +103,10 @@ class RecordReplayAdapter:
             _fail("FORWARD_UNBOUNDED_INPUT", "scenario attempted to read a fixture outside its declared manifest closure", alias)
         if alias not in self.records:
             _fail("FORWARD_FIXTURE_MISSING", "scenario requested an undeclared fixture alias", alias)
+        if self.enforce_bounds and alias != self.input_alias:
+            kinds = INPUT_KINDS.get(alias, set())
+            if not kinds.intersection(self.allowed_inputs):
+                _fail("FORWARD_INPUT_BOUND", "fixture read is outside the scenario allowed-input contract", alias)
         self.events.append({"kind": "read", "alias": alias})
         return copy.deepcopy(self.records[alias])
 
@@ -159,6 +166,42 @@ FIXTURE_FILES = {
     "qa-blocked": "qa-evaluator/blocked-packet.json",
     "qa-result-qa1": "qa-schema/result-qa1-valid.json",
     "qa-evidence-row": "qa-schema/evidence-row-valid.json",
+}
+
+INPUT_KINDS = {
+    "state-valid": {"state", "request", "release-readback", "control-outcome", "clearing-evidence", "source-sha", "accepted-contract", "scope-change", "human-gate"},
+    "state-experience-current": {"state", "failure", "activity-state"},
+    "state-experience-completed": {"state", "experience-receipt", "device-evidence", "qa-packet", "diagnosis"},
+    "state-released-ready": {"state", "release-state", "release-readback", "source-change"},
+    "state-control-outcome": {"state", "control-outcome", "clearing-evidence"},
+    "receipt-plan": {"receipts", "receipt-chain", "unchanged-causal-identity", "migration-metadata"},
+    "receipt-build": {"receipts", "receipt-chain", "source-sha", "source-change", "environment-contract", "package-digest", "unchanged-causal-identity", "migration-metadata"},
+    "receipt-cloudbase": {"receipts", "receipt-chain", "environment-contract", "source-sha", "source-change"},
+    "receipt-experience": {"receipts", "receipt-chain", "package-digest", "environment-contract", "source-sha", "source-change"},
+    "human-awaiting": {"human-gate"},
+    "human-readback": {"human-gate", "release-readback"},
+    "human-gate-request": {"human-gate"},
+    "module-release-payment-na": {"payment-scope", "release-gates", "module"},
+    "module-release-release-ready": {"release-state", "release-gates"},
+    "module-device-protected-failure": {"device-evidence", "module"},
+    "browser-candidate": {"candidate", "target", "identity", "asset-digests", "matrix"},
+    "browser-target": {"candidate", "target", "identity", "asset-digests", "matrix"},
+    "browser-stale": {"target", "identity", "asset-digests", "matrix"},
+    "browser-matrix": {"matrix", "evidence-row", "before-evidence", "after-evidence", "identity", "asset-digests"},
+    "dev-events-valid": {"raw-events", "source-identity", "screenshot", "upload-note", "readback", "qa-packet", "packets"},
+    "dev-events-defect": {"raw-events", "source-identity", "screenshot", "upload-note", "readback", "qa-packet", "packets"},
+    "dev-events-missing": {"raw-events", "screenshot"},
+    "dev-matrix": {"matrix", "evidence-row", "screenshot", "readback"},
+    "devtools-missing": {"tool-availability"},
+    "qa-pass": {"qa-packet", "packet", "packets", "candidate-digest"},
+    "qa-fail": {"qa-packet", "packets", "qa-advisory", "candidate-digest", "diagnosis"},
+    "qa-blocked": {"qa-packet", "packets", "human-gate"},
+    "qa-result-qa1": {"result", "candidate-digest", "identity"},
+    "qa-evidence-row": {"evidence-row", "before-evidence", "after-evidence", "artifact-tree"},
+    "diagnosis-build": {"diagnosis", "causal-proposal", "qa-advisory"},
+    "diagnosis-device": {"diagnosis", "qa-advisory"},
+    "skill-entry": {"skill-entry", "module-map"},
+    "qa-run": {"evaluator-availability", "tool-availability"},
 }
 
 
@@ -630,7 +673,7 @@ def _artifact_tree_control() -> bool:
 
 def run_forward_evaluation(manifest: Any, *, records: Mapping[str, Any] | None = None) -> dict[str, Any]:
     scenarios = validate_manifest(manifest)
-    source_records = records or load_records()
+    source_records = copy.deepcopy(records) if records is not None else load_records()
     for scenario in scenarios:
         source_records.setdefault(scenario["input_alias"], {"scenario_id": scenario["id"], "operation": scenario["operation"], "allowed_inputs": scenario["allowed_inputs"], "exclusions": scenario["exclusions"]})
     declared_aliases = {fixture_alias for scenario in scenarios for fixture_alias in scenario["fixtures"]}
@@ -643,7 +686,7 @@ def run_forward_evaluation(manifest: Any, *, records: Mapping[str, Any] | None =
     for scenario in scenarios:
         scenario_aliases = set(scenario["fixtures"]) | {scenario["input_alias"]}
         scenario_records = {alias: source_records[alias] for alias in scenario_aliases}
-        adapter = RecordReplayAdapter(scenario_records, allowed_aliases=scenario_aliases)
+        adapter = RecordReplayAdapter(scenario_records, allowed_aliases=scenario_aliases, allowed_inputs=set(scenario["allowed_inputs"]), input_alias=scenario["input_alias"])
         input_record = adapter.read(scenario["input_alias"])
         if not isinstance(input_record, Mapping) or input_record.get("scenario_id") != scenario["id"]:
             _fail("FORWARD_INPUT_BINDING", "scenario input alias does not bind the current scenario", scenario["input_alias"])
@@ -657,7 +700,7 @@ def run_forward_evaluation(manifest: Any, *, records: Mapping[str, Any] | None =
         scenario_network.extend(adapter.external_network_events)
         scenario_mutation.extend(adapter.mutation_events)
         rows.append({"id": scenario["id"], "track": scenario["track"], "operation": scenario["operation"], "input_alias": scenario["input_alias"], "allowed_inputs": copy.deepcopy(scenario["allowed_inputs"]), "exclusions": copy.deepcopy(scenario["exclusions"]), "reads": actual_reads, "observations": observations})
-    control_adapter = RecordReplayAdapter({alias: source_records[alias] for alias in declared_aliases}, allowed_aliases=declared_aliases)
+    control_adapter = RecordReplayAdapter({alias: source_records[alias] for alias in declared_aliases}, allowed_aliases=declared_aliases, enforce_bounds=False)
     controls = _surface_controls(control_adapter)
     control_adapter.assert_no_external_side_effects()
     nested_network = []

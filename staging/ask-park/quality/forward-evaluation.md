@@ -4,7 +4,7 @@ S14B runs the merged Ask Park architecture and independent QA designs from raw
 fixtures. The manifest contains 23 architecture cases and 22 QA cases with
 explicit allowed inputs and exclusions. It contains no intended verdict,
 `expected_result`, route command, or canned pass/fail field.
-Its canonical digest binds every operation, input alias, fixture closure,
+Its shared JCS-compatible canonical digest binds every operation, input alias, fixture closure,
 allowed-input list, and exclusion; a tampered descriptor is rejected before
 execution.
 Each scenario receives its own adapter with only its declared fixture aliases;

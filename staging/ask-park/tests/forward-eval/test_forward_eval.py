@@ -104,13 +104,16 @@ class ForwardEvalTests(unittest.TestCase):
 
     def test_custom_fixture_records_are_privacy_checked_before_execution(self):
         records = self.eval.load_records()
+        original = copy.deepcopy(records)
         records["module-release-payment-na"]["review"]["result"] = "https://private.example"
         with self.assertRaises(self.eval.ForwardEvalError) as raised:
             self.eval.run_forward_evaluation(self.manifest, records=records)
         self.assertEqual(raised.exception.code, "FORWARD_RECORD_PRIVATE")
+        self.assertEqual(set(records), set(original))
+        self.assertEqual(records["module-release-payment-na"]["review"]["result"], "https://private.example")
 
     def test_adapter_rejects_network_and_mutation(self):
-        adapter = self.eval.RecordReplayAdapter({"fixture": {"ok": True}})
+        adapter = self.eval.RecordReplayAdapter({"fixture": {"ok": True}}, enforce_bounds=False)
         self.assertEqual(adapter.read("fixture"), {"ok": True})
         with self.assertRaises(self.eval.ForwardEvalError):
             adapter.request("external")
