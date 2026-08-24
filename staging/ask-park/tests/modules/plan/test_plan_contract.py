@@ -83,12 +83,13 @@ class PlanContractTests(unittest.TestCase):
         self.assertTrue(document["decision_needed"])
 
     def test_plan_fixtures_do_not_cross_the_persistence_boundary(self):
-        forbidden_keys = {"secret", "token", "password", "appid", "appsecret", "environment_id", "openid"}
+        forbidden_keys = {"secret", "token", "password", "appid", "appsecret", "environment_id", "openid", "private_key", "access_key", "api_key", "cookie"}
 
         def walk(value):
             if isinstance(value, dict):
                 for key, child in value.items():
-                    self.assertNotIn(key.lower(), forbidden_keys)
+                    normalized = key.lower().replace("-", "_")
+                    self.assertFalse(any(part in normalized for part in forbidden_keys))
                     walk(child)
             elif isinstance(value, list):
                 for child in value:

@@ -80,6 +80,9 @@ source_evidence: [aliases and limitations]
 - `issue_contract.immutable` is true only after the human accepts the boundary.
   A material change creates a new version/superseding contract; the old
   criteria are not rewritten.
+- `outcome.first_useful_moment` is observable when `control_outcome: none`.
+  A stopped `unknown` record may use the literal `unknown` sentinel only when
+  `decision_needed` names the missing product choice.
 - `issue_actions` may prepare a contract. Automatic issue creation is outside
   Plan and remains an empty list in a stopped/blocked record.
 - No field may contain secrets, AppID/AppSecret, environment IDs, OpenID,
