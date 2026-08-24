@@ -1,0 +1,20 @@
+{
+  "worker_identity": "worker-build-a",
+  "evaluator_identity": "evaluator-fresh-b",
+  "fresh_context": true,
+  "read_only": true,
+  "candidate_sha_before": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "candidate_sha_after": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "worktree_sha_before": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "worktree_sha_after": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "bounded_inputs": ["issue-24"],
+  "exclusions": ["live-provider"],
+  "verdict": "QA_FAIL",
+  "findings": ["candidate changed during evaluation"],
+  "advisory_earliest_layer": "build",
+  "automation_passed": false,
+  "human_gate_required": false,
+  "issue_contract_id": "issue-24",
+  "attempt": 1,
+  "limitations": ["Candidate changed during evaluation."]
+}
