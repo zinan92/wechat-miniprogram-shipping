@@ -81,26 +81,14 @@ clean-clone receipt 会记录 closure digest、router/七模块/QA canary 和缺
 
 升级时先 `git pull`，再重复上面的隔离 proof；不要直接覆盖一个未知的 active skill 目录。S16C 的实际切换由 `scripts/installed-cutover.py` 执行，要求 legacy/canonical 目标位于已盘点 scanned root，并在移动前创建 root 外 backup。
 
-回滚只使用已生成的 redacted backup 和 S16C receipt；概念命令如下（先确认路径属于该 receipt，禁止猜路径）：
-
-```bash
-LEGACY_ROOT="${LEGACY_ROOT:?set this from receipts/installed-cutover.json}"
-CANONICAL_ROOT="${CANONICAL_ROOT:?set this from the selector read-back}"
-BACKUP_ROOT="${BACKUP_ROOT:?set this from the redacted backup receipt}"
-python3 - <<'PY'
-import os
-from pathlib import Path
-from scripts.installed_cutover import rollback_cutover
-
-rollback_cutover(
-    legacy_root=Path(os.environ["LEGACY_ROOT"]),
-    canonical_root=Path(os.environ["CANONICAL_ROOT"]),
-    backup_root=Path(os.environ["BACKUP_ROOT"]),
-)
-PY
-```
-
-操作后重新运行 selector read-back 和 clean-clone canary；不要把 rollback 当成小程序或平台发布回滚。
+回滚只使用已生成的 redacted backup 和 S16C receipt。路径不会写入公共
+receipt，因此不能从文档猜路径，也不要直接调用底层文件移动函数。当前没有
+可复制粘贴的 rollback-only 命令：这是一个 **operator-only** 流程，操作者
+必须先在本机 selector 中确认 legacy/canonical 目标和 backup 所在的
+scanned-root 外目录，再按 S16C wrapper 的 scope checks 执行；这保留了
+`legacy → backup → canonical` 的原子边界。回滚后必须重新运行 selector
+read-back、`scripts/clean-clone.py` 和 installed canary；这只是 skill 安装回滚，
+不是小程序或平台发布回滚。
 
 ## 调用
 
@@ -152,7 +140,16 @@ PY
 
 ```bash
 python3 tools/validate-package-layout.py --root . --mode final --json
-python3 -m unittest discover -s tests -p 'test_*.py'
+# Test folders use readable names such as `installed-cutover/`, so run every
+# file explicitly instead of relying on unittest package discovery.
+python3 - <<'PY'
+from pathlib import Path
+import subprocess
+import sys
+
+for test_file in sorted(Path("tests").rglob("test_*.py")):
+    subprocess.run([sys.executable, str(test_file)], check=True)
+PY
 python3 -m py_compile $(find scripts -type f -name '*.py' -print)
 git diff --check
 gitleaks detect --no-banner --source . --redact

@@ -4,8 +4,8 @@
 
 - Public repository: `zinan92/wechat-miniprogram-shipping`.
 - Implemented: canonical root skill identity is `$ask-park`, with seven anchors, independent QA, migration, and cutover contracts.
-- Installed: S16C read back one enabled `$ask-park` and zero enabled `$wechat-miniprogram-shipping`; the legacy directory remains only as a recoverable backup outside scanned roots.
-- Verified: root package, clean clone, installed router/module/QA canary, selector, rollback rehearsal, and sanitized receipts all passed. This is skill/install verification, not a Mini Program production-release claim.
+- Installed: S16C/S16D read back one enabled `$ask-park` and zero enabled `$wechat-miniprogram-shipping`; the legacy directory remains only as recoverable backups outside scanned roots.
+- Verified: root package, clean clone, installed router/module/QA canary, selector, rollback rehearsal, latest closure digest, and sanitized receipts all passed. This is skill/install verification, not a Mini Program production-release claim.
 - Ask Park single-entry, seven-module architecture is approved and merged in PR #5.
 - Independent Ask Park QA Gate design is approved by Park and merged in PR #7. Its three-round independent review findings were addressed; the final two schema corrections were mechanically validated after the review ceiling and remain visible in the PR record.
 - The L-level implementation plan is approved by architecture, QA/test, and packaging reviewers and merged in PR #11.
@@ -31,13 +31,13 @@
 - S16A/#30 is complete in PR #74 (`19a7bc6`): staging-only scanned-root/symlink/realpath inventory, redacted file refs, JCS-bound canonical package manifest, verified repository/history pre-migration receipt, outside-root staging scope, private/symlink escape rejection, transactional cleanup, managed four-checkpoint rollback rehearsals, and no root/active-skill cutover; 12/12 migration tests plus the full staged/module regression set passed. Staged validation, `py_compile`, diff-check, gitleaks, and both reviews passed.
 - S16B/#31 is complete in PR #76 (`6fc11b4`): canonical Ask Park promoted to root with exactly one SKILL/metadata pair, full closure at root, staging duplicate removed, capability-first README with managed temporary clean-clone installer, closure manifest equality, full router/module/QA canary, seven-path missing-file failures, and no active local path mutation; root final layout and full regression suite passed. Final package, py_compile, diff-check, gitleaks, and both cutover reviews passed.
 - S16C/#32 is complete in PR #78 (`1bfe3a1`): actual two-root inventory, one-canonical/zero-legacy selector read-back, installed manifest/canary equality, atomic legacy backup/canonical move, four rollback rehearsals, automatic post-apply rollback, final reapply, and sanitized operational receipt; 7/7 installed-cutover tests plus the full root regression suite passed. Final layout, `py_compile`, diff-check, gitleaks, and both reviews passed.
-- S16D/#33 is the final publication story. README, public read-back, and Registry status are being finalized now; no real Mini Program release is implied.
+- S16D/#33 is complete in the final publication change: capability-first README, proven clean-clone install/upgrade/rollback boundaries, latest installed canary/read-back, public evidence limits, and final Registry status. No real Mini Program release is implied.
 
 ## 下一步
 
-1. Complete [#33 / S16D](https://github.com/zinan92/wechat-miniprogram-shipping/issues/33): final capability README and public read-back.
-2. After S16D, choose a separate human-approved real-use Mini Program trial; do not infer production readiness from this repository.
-3. Preserve hard WIP=1 and the published dependency order through #33/S16D.
+1. Merge and close [#33 / S16D](https://github.com/zinan92/wechat-miniprogram-shipping/issues/33) after the final public read-back.
+2. The next work is a separately scoped, human-approved, non-production Mini Program real-use trial; do not infer production readiness from this repository.
+3. Preserve hard WIP=1; there is no further implementation issue in this queue.
 
 ## Evidence
 

@@ -2,7 +2,7 @@
   "backup_ref": "redacted:legacy-backup",
   "canary": {
     "current_module": "experience",
-    "manifest_digest": "sha256:65fbeb18bd6e86400809797ccc6ada1c932a3468c9d22dfafe906c262e12470d",
+    "manifest_digest": "sha256:350b1feb1be9013489224ce3184b0d472f1154eec1bc20c2aa9160cc611a1808",
     "module_contracts": 7,
     "qa_paths_loaded": true,
     "router_loaded": true
@@ -121643,7 +121643,7 @@
   "limitations": [
     "Installed selector state is local to the scanned roots read during this operation."
   ],
-  "receipt_digest": "sha256:c5e8a81014d4aa3bee81dcb37feb10f3545a02b376909a513b3dcdab8a0e20ff",
+  "receipt_digest": "sha256:56e69507187cabfa424c3290a12fc41e787fba1ce2461dc7dfda79930f56c2dd",
   "repository_identity": "zinan92/wechat-miniprogram-shipping",
   "rollback_results": [
     {
