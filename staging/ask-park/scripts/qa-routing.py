@@ -105,8 +105,14 @@ def _safe(value: Any) -> bool:
                 return False
     elif isinstance(value, list):
         return all(_safe(child) for child in value)
-    elif isinstance(value, str) and value.startswith(PRIVATE_PREFIXES):
-        return False
+    elif isinstance(value, str):
+        lowered = value.lower()
+        if any(prefix in lowered for prefix in ("http://", "https://", "file://", "cloud://")):
+            return False
+        if any(marker in lowered for marker in ("next_module", "current_module", "route_to")):
+            return False
+        if any(value.startswith(prefix) for prefix in PRIVATE_PREFIXES[3:]):
+            return False
     return True
 
 

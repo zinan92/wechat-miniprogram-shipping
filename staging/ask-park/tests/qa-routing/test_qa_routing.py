@@ -65,6 +65,16 @@ class QARoutingTests(unittest.TestCase):
         forged["selected_module"] = "release"
         self.assertCode("QA_PACKET_INVALID", self.routing.advisory_from_packet, forged)
 
+        diagnosis = self.fixture(ROUTING_FIXTURES, "diagnosis-device.json")
+        diagnosis["recovery_goal"] = "inspect https://private.example"
+        self.assertCode(
+            "QA_DIAGNOSIS_PRIVATE",
+            self.routing.route_qa_result,
+            self.state("experience-completed.json"),
+            packet,
+            diagnosis=diagnosis,
+        )
+
     def test_pass_is_non_promoting_and_direct_fail_routing_is_rejected(self):
         state = self.state("experience-current.json")
         original = copy.deepcopy(state)
