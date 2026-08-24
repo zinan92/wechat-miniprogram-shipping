@@ -113,6 +113,8 @@ def run_trial() -> dict[str, Any]:
     target = _read("browser-qa/target-site-valid.json")
     stale = _read("browser-qa/target-stale.json")
     browser_matrix = _read("browser-qa/matrix-valid.json")
+    if candidate["source_sha"] != trial["browser_source_sha_raw"] or target["target_alias"] != trial["browser_target_alias_raw"]:
+        _fail("TRIAL_RAW_IDENTITY", "raw Browser fixture identity does not match the trial contract", "browser")
     candidate["source_sha"] = trial["candidate_source_sha"]
     target["source_sha"] = trial["candidate_source_sha"]
     target["target_alias"] = trial["target_alias"]
@@ -126,6 +128,8 @@ def run_trial() -> dict[str, Any]:
     dev_valid = _read("devtools-qa/events-valid.json")
     dev_defect = _read("devtools-qa/events-defect.json")
     dev_missing_final = _read("devtools-qa/events-missing-final-compile.json")
+    if any(event_set[0]["project_alias"] != trial["devtools_project_alias_raw"] for event_set in (dev_valid, dev_defect, dev_missing_final)):
+        _fail("TRIAL_RAW_IDENTITY", "raw DevTools project identity does not match the trial contract", "devtools")
     for event_set in (dev_valid, dev_defect, dev_missing_final):
         event_set[0]["project_alias"] = trial["project_alias"]
     if dev_valid[1]["source_sha"] != trial["devtools_candidate_source_sha"]:
@@ -163,7 +167,8 @@ def run_trial() -> dict[str, Any]:
     nested_mutations = [event for run in nested_runs for event in run["adapter"].get("mutation_events", run["adapter"].get("platform_mutation_events", []))]
     automation_passed = browser_pass["result"] == "QA_PASS" and dev_pass["result"] == "QA_PASS" and blocked["automation_passed"] is True
     touched_targets = [target["target_alias"], dev_matrix[0]["device"]]
-    if any(target_alias in trial["forbidden_targets"] for target_alias in touched_targets):
+    forbidden_touched = [target_alias for target_alias in touched_targets if target_alias in trial["forbidden_targets"]]
+    if forbidden_touched:
         _fail("TRIAL_FORBIDDEN_TARGET", "trial touched a forbidden target alias", "targets")
     result = {
         "fixture_id": trial["fixture_id"],
@@ -173,7 +178,8 @@ def run_trial() -> dict[str, Any]:
         "repair": {"result": fresh["result"], "new_candidate_sha": fresh["candidate_source_sha"], "fresh_evidence": fresh["candidate_source_sha"] == fresh_candidate["source_sha"]},
         "physical_device": {"automation_passed": automation_passed, "result": "QA_BLOCKED", "route_kind": human["route_kind"], "diagnose": human["state"]["diagnose"]["state"], "gate": human["state"]["human_gate"]["state"]},
         "repair_loop": repair,
-        "forbidden_targets_touched": touched_targets,
+        "touched_targets": touched_targets,
+        "forbidden_targets_touched": forbidden_touched,
         "external_network_events": nested_network,
         "mutation_events": nested_mutations,
         "artifact_tree_clean": False,

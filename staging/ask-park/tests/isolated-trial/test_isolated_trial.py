@@ -39,6 +39,7 @@ class IsolatedTrialTests(unittest.TestCase):
         self.assertTrue(result["artifact_tree_clean"])
         self.assertNotIn("wechat-xingqiu", result["forbidden_targets_touched"])
         self.assertNotIn("production-cloudbase", result["forbidden_targets_touched"])
+        self.assertTrue(result["touched_targets"])
 
     def test_repair_is_new_candidate_with_fresh_evidence(self):
         result = self.trial.run_trial()
