@@ -83,6 +83,11 @@ class EvaluatorTests(unittest.TestCase):
         state = self.evaluator.start_attempt(worker_identity="worker-build-a", evaluator_identity="evaluator-fresh-b", candidate_sha="sha256:" + "a" * 64, worktree_sha="sha256:" + "a" * 64, issue_contract_id="issue-24")
         self.assertCode("QA_REPAIR_STATE", self.evaluator.repair_attempt, state, candidate_sha="sha256:" + "b" * 64, worktree_sha="sha256:" + "b" * 64, same_contract=True)
 
+    def test_non_contract_repair_requires_both_new_issue_and_evaluator(self):
+        state = {"execution_state": "complete", "result": "QA_FAIL", "control_outcome": "none", "attempt": 1, "max_attempts": 3, "candidate_sha": "sha256:" + "a" * 64, "worktree_sha": "sha256:" + "a" * 64, "issue_contract_id": "issue-24", "worker_identity": "worker-a", "evaluator_identity": "evaluator-b"}
+        self.assertCode("QA_REPAIR_IDENTITY_REQUIRED", self.evaluator.repair_attempt, state, candidate_sha="sha256:" + "b" * 64, worktree_sha="sha256:" + "b" * 64, same_contract=False, prior_result="QA_FAIL", issue_contract_id="issue-25", evaluator_identity="evaluator-b")
+        self.assertCode("QA_REPAIR_IDENTITY_REQUIRED", self.evaluator.repair_attempt, state, candidate_sha="sha256:" + "b" * 64, worktree_sha="sha256:" + "b" * 64, same_contract=False, prior_result="QA_FAIL", issue_contract_id="issue-24", evaluator_identity="evaluator-c")
+
     def test_pass_or_blocked_or_identity_change_resets_attempt(self):
         state = {"execution_state": "complete", "result": "QA_PASS", "control_outcome": "none", "attempt": 2, "max_attempts": 3}
         state["candidate_sha"] = "sha256:" + "a" * 64

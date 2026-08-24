@@ -189,6 +189,10 @@ def repair_attempt(state: Mapping[str, Any], *, candidate_sha: str, worktree_sha
     if not same_contract:
         if not _alias(issue_contract_id) or not _alias(evaluator_identity):
             _fail("QA_REPAIR_IDENTITY_REQUIRED", "contract changes require new issue and evaluator identities", "repair")
+        if issue_contract_id == current.get("issue_contract_id"):
+            _fail("QA_REPAIR_IDENTITY_REQUIRED", "non-contract repair requires a new issue contract ID", "repair.issue_contract_id")
+        if evaluator_identity == current.get("evaluator_identity"):
+            _fail("QA_REPAIR_IDENTITY_REQUIRED", "non-contract repair requires a new evaluator identity", "repair.evaluator_identity")
         if evaluator_identity == current.get("worker_identity"):
             _fail("QA_EVALUATOR_NOT_INDEPENDENT", "worker and evaluator identities must differ", "repair.evaluator_identity")
         current["issue_contract_id"] = issue_contract_id
