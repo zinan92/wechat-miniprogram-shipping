@@ -5,11 +5,16 @@
   "read_only": true,
   "candidate_sha_before": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   "candidate_sha_after": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "worktree_sha_before": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "worktree_sha_after": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   "bounded_inputs": ["issue-24", "candidate-manifest-r1", "tests-r1"],
   "exclusions": ["live-provider", "credentials", "private-data"],
   "verdict": "QA_PASS",
   "findings": [],
   "advisory_earliest_layer": null,
   "automation_passed": true,
-  "human_gate_required": false
+  "human_gate_required": false,
+  "issue_contract_id": "issue-24",
+  "attempt": 1,
+  "limitations": ["Target and physical-device behavior are not in this packet."]
 }

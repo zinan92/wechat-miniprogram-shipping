@@ -56,13 +56,18 @@ class EvaluatorTests(unittest.TestCase):
         self.assertEqual(self.evaluator.validate_packet(blocked)["verdict"], "QA_BLOCKED")
         blocked["automation_passed"] = False
         self.assertCode("QA_BLOCKED_AUTOMATION", self.evaluator.validate_packet, blocked)
+        passed = self.fixture("pass-packet.json")
+        passed["automation_passed"] = False
+        self.assertCode("QA_PASS_AUTOMATION", self.evaluator.validate_packet, passed)
 
     def test_three_attempt_loop_escalates_without_fourth_repair(self):
-        state = self.evaluator.start_attempt(worker_identity="worker-a", evaluator_identity="evaluator-b", candidate_sha="sha256:" + "a" * 64, issue_contract_id="issue-24")
+        state = self.evaluator.start_attempt(worker_identity="worker-build-a", evaluator_identity="evaluator-fresh-b", candidate_sha="sha256:" + "a" * 64, issue_contract_id="issue-24")
         for attempt in (1, 2, 3):
             packet = self.fixture("fail-packet.json")
             packet["candidate_sha_before"] = "sha256:" + chr(96 + attempt) * 64
             packet["candidate_sha_after"] = packet["candidate_sha_before"]
+            packet["worktree_sha_before"] = packet["candidate_sha_before"]
+            packet["worktree_sha_after"] = packet["candidate_sha_before"]
             packet["attempt"] = attempt
             state["attempt"] = attempt
             state = self.evaluator.complete_attempt(state, packet)
@@ -77,9 +82,17 @@ class EvaluatorTests(unittest.TestCase):
         state = {"execution_state": "complete", "result": "QA_PASS", "control_outcome": "none", "attempt": 2, "max_attempts": 3}
         reset = self.evaluator.repair_attempt(state, candidate_sha="sha256:" + "b" * 64, same_contract=True, prior_result="QA_PASS")
         self.assertEqual(reset["attempt"], 1)
+        self.assertCode("QA_ATTEMPT_INVALID", self.evaluator.start_attempt, worker_identity="worker-a", evaluator_identity="evaluator-b", candidate_sha="sha256:" + "a" * 64, issue_contract_id="issue-24", attempt=0)
+        self.assertCode("QA_ATTEMPT_INVALID", self.evaluator.start_attempt, worker_identity="worker-a", evaluator_identity="evaluator-b", candidate_sha="sha256:" + "a" * 64, issue_contract_id="issue-24", attempt=4)
         state["result"] = "QA_FAIL"
         reset = self.evaluator.repair_attempt(state, candidate_sha="sha256:" + "c" * 64, same_contract=False, prior_result="QA_FAIL")
         self.assertEqual(reset["attempt"], 1)
+
+    def test_no_evaluator_is_prerequisite_missing_not_blocked(self):
+        state = self.evaluator.prerequisite_missing(origin_module="build")
+        self.assertEqual(state["qa"]["execution_state"], "unavailable")
+        self.assertEqual(state["qa"]["result"], "none")
+        self.assertEqual(state["qa"]["control_outcome"], "qa-prerequisite-missing")
 
     def test_fixtures_reject_verdict_conversation_and_candidate_mutation(self):
         for name in ("self-signed-invalid.json", "candidate-edited-invalid.json", "reuse-invalid.json"):
