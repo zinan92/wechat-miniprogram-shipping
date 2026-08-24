@@ -1,8 +1,8 @@
 [
   {"type":"project-open","project_alias":"reader-project","external_network":false,"platform_mutation":false},
-  {"type":"compile","source_sha":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","tool":"wechat-devtools","base_library":"base-v1","external_network":false,"platform_mutation":false},
-  {"type":"screenshot","route":"reader-home","device":"iphone-profile","state":"loading","defects":["duplicate-title","double-safe-area"],"source_sha":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","external_network":false,"platform_mutation":false},
+  {"type":"compile","source_sha":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","tool":"wechat-devtools","base_library":"base-v1","compile_provenance":"compile-v1","external_network":false,"platform_mutation":false},
+  {"type":"screenshot","route":"reader-home","device":"iphone-profile","state":"loading","defects":["duplicate-title","double-safe-area"],"source_sha":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","screenshot_hash":"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","external_network":false,"platform_mutation":false},
   {"type":"upload-note","candidate_digest":"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","note_alias":"reader-r1","external_network":false,"platform_mutation":false},
   {"type":"platform-readback","candidate_digest":"sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","version_alias":"experience-v1","external_network":false,"platform_mutation":false},
-  {"type":"final-compile","source_sha":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","tool":"wechat-devtools","base_library":"base-v1","external_network":false,"platform_mutation":false}
+  {"type":"final-compile","source_sha":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","tool":"wechat-devtools","base_library":"base-v1","compile_provenance":"compile-v1","external_network":false,"platform_mutation":false}
 ]

@@ -1,5 +1,5 @@
 [
   {"type":"project-open","project_alias":"reader-project","external_network":false,"platform_mutation":false},
-  {"type":"compile","source_sha":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","tool":"wechat-devtools","base_library":"base-v1","external_network":false,"platform_mutation":false},
-  {"type":"screenshot","route":"reader-home","device":"iphone-profile","state":"loading","defects":[],"source_sha":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","external_network":false,"platform_mutation":false}
+  {"type":"compile","source_sha":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","tool":"wechat-devtools","base_library":"base-v1","compile_provenance":"compile-v1","external_network":false,"platform_mutation":false},
+  {"type":"screenshot","route":"reader-home","device":"iphone-profile","state":"loading","defects":[],"source_sha":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","screenshot_hash":"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","external_network":false,"platform_mutation":false}
 ]
