@@ -31,7 +31,7 @@ class ForwardEvalTests(unittest.TestCase):
         self.assertEqual(result["scenario_count"], 45)
         self.assertEqual(result["architecture_count"], 23)
         self.assertEqual(result["qa_count"], 22)
-        self.assertTrue(all(row["status"] == "observed" for row in result["results"]))
+        self.assertTrue(all("observations" in row for row in result["results"]))
         self.assertEqual(result["external_network_events"], [])
         self.assertEqual(result["mutation_events"], [])
         self.assertTrue(result["artifact_tree_clean"])
@@ -44,10 +44,13 @@ class ForwardEvalTests(unittest.TestCase):
         self.assertEqual(controls["evaluator"]["pass"], "QA_PASS")
         self.assertEqual(controls["evaluator"]["third_result"], "QA_FAIL")
         self.assertEqual(controls["evaluator"]["third_control_outcome"], "needs-park-decision")
+        self.assertTrue(controls["evaluator"]["fourth_rejected"])
         self.assertTrue(controls["qa_schema"]["reset"])
         self.assertEqual(controls["state"]["pass"], "valid")
         self.assertTrue(controls["state"]["defect"])
         self.assertEqual(controls["state"]["restore"], "valid")
+        self.assertEqual(controls["qa_routing"]["defect"], "diagnose")
+        self.assertEqual(controls["qa_routing"]["restore"], "standby")
 
     def test_architecture_oracles_are_observable_state_or_result_fields(self):
         result = self.eval.run_forward_evaluation(self.manifest)
@@ -88,6 +91,19 @@ class ForwardEvalTests(unittest.TestCase):
         with self.assertRaises(self.eval.ForwardEvalError) as raised:
             self.eval.validate_manifest(missing)
         self.assertEqual(raised.exception.code, "FORWARD_MANIFEST_COUNT")
+
+        changed = copy.deepcopy(self.manifest)
+        changed[0]["operation"] = "unrelated-operation"
+        with self.assertRaises(self.eval.ForwardEvalError) as raised:
+            self.eval.validate_manifest(changed)
+        self.assertEqual(raised.exception.code, "FORWARD_MANIFEST_BINDING")
+
+    def test_custom_fixture_records_are_privacy_checked_before_execution(self):
+        records = self.eval.load_records()
+        records["module-release-payment-na"]["review"]["result"] = "https://private.example"
+        with self.assertRaises(self.eval.ForwardEvalError) as raised:
+            self.eval.run_forward_evaluation(self.manifest, records=records)
+        self.assertEqual(raised.exception.code, "FORWARD_RECORD_PRIVATE")
 
     def test_adapter_rejects_network_and_mutation(self):
         adapter = self.eval.RecordReplayAdapter({"fixture": {"ok": True}})

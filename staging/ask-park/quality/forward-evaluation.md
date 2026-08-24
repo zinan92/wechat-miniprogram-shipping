@@ -4,6 +4,9 @@ S14B runs the merged Ask Park architecture and independent QA designs from raw
 fixtures. The manifest contains 23 architecture cases and 22 QA cases with
 explicit allowed inputs and exclusions. It contains no intended verdict,
 `expected_result`, route command, or canned pass/fail field.
+Its canonical digest binds every operation, input alias, fixture closure,
+allowed-input list, and exclusion; a tampered descriptor is rejected before
+execution.
 
 ## Fresh bounded execution
 
@@ -30,6 +33,10 @@ Every surface has an explicit `pass → seeded defect → restore → pass` cont
 - lifecycle evidence rewind and restored fixture state;
 - QA-routing Diagnose activation and recovery.
 
+The QA-routing control actually activates Diagnose, recovers it, and reruns a
+QA_PASS; the evaluator control actually attempts a fourth repair and records
+that the bounded loop rejects it.
+
 Attempt three retains `QA_FAIL + needs-park-decision`; no blind fourth repair is
 run. Simulator, Browser, and upload evidence retain their limitations.
 
@@ -38,9 +45,11 @@ run. Simulator, Browser, and upload evidence retain their limitations.
 Sensitive screenshot bytes, private paths, credentials, full URLs, and private
 fixture names are created only ephemerally for the artifact-tree control and
 are removed before the result is emitted. The final tree must contain only
-sanitized/redacted aliases. The report records
+sanitized/redacted aliases. The report derives and records
 `external_network_events: []`, `mutation_events: []`, and
-`artifact_tree_clean: true`.
+`artifact_tree_clean: true` from the adapter/event log and the actual
+temporary run-output tree, rather than writing these values as a canned
+verdict.
 
 S14B is a read-only evaluation. It never edits code, changes a CloudBase or
 WeChat environment, uploads a package, or promotes Ask Park state.

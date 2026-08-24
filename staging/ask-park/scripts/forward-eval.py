@@ -86,11 +86,16 @@ def _safe(value: Any) -> bool:
 class RecordReplayAdapter:
     """Read deterministic records and make every external action fail closed."""
 
-    def __init__(self, records: Mapping[str, Any]) -> None:
+    def __init__(self, records: Mapping[str, Any], *, allowed_aliases: set[str] | None = None) -> None:
+        if not isinstance(records, Mapping) or not _safe(records):
+            _fail("FORWARD_RECORD_PRIVATE", "raw fixture records contain private values or fields", "records")
         self.records = copy.deepcopy(dict(records))
+        self.allowed_aliases = set(allowed_aliases or self.records)
         self.events: list[dict[str, str]] = []
 
     def read(self, alias: str) -> Any:
+        if alias not in self.allowed_aliases:
+            _fail("FORWARD_UNBOUNDED_INPUT", "scenario attempted to read a fixture outside its declared manifest closure", alias)
         if alias not in self.records:
             _fail("FORWARD_FIXTURE_MISSING", "scenario requested an undeclared fixture alias", alias)
         self.events.append({"kind": "read", "alias": alias})
@@ -112,6 +117,14 @@ class RecordReplayAdapter:
         violations = [event for event in self.events if event["kind"] != "read"]
         if violations:
             _fail("FORWARD_EXTERNAL_SIDE_EFFECT", "fixture execution emitted a non-read event", "adapter.events")
+
+    @property
+    def external_network_events(self) -> list[dict[str, str]]:
+        return [event for event in self.events if event["kind"] == "network"]
+
+    @property
+    def mutation_events(self) -> list[dict[str, str]]:
+        return [event for event in self.events if event["kind"] == "mutation"]
 
 
 FIXTURE_FILES = {
@@ -194,6 +207,11 @@ def validate_manifest(manifest: Any) -> list[dict[str, Any]]:
         normalized.append(copy.deepcopy(dict(item)))
     if seen != ALL_IDS:
         _fail("FORWARD_SCENARIO_COVERAGE", "scenario IDs do not cover the full matrix", "manifest.id")
+    canonical_path = _FIXTURES / "forward-eval" / "scenarios.json"
+    canonical = json.loads(canonical_path.read_text(encoding="utf-8"))
+    digest = lambda value: hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+    if digest(manifest) != digest(canonical):
+        _fail("FORWARD_MANIFEST_BINDING", "scenario bounds and operations must match the reviewed canonical manifest", "manifest")
     return normalized
 
 
@@ -350,9 +368,9 @@ def _surface_controls(adapter: RecordReplayAdapter) -> dict[str, Any]:
     browser_restore = _BROWSER.run_hermetic_qa2(adapter.read("browser-candidate"), adapter.read("browser-target"), browser_matrix)
 
     dev_matrix = adapter.read("dev-matrix")
-    dev_pass = _DEVTOOLS.evaluate_events(adapter.read("dev-events-valid"), dev_matrix)
-    dev_fail = _DEVTOOLS.evaluate_events(adapter.read("dev-events-defect"), dev_matrix)
-    dev_restore = _DEVTOOLS.evaluate_events(adapter.read("dev-events-valid"), dev_matrix)
+    dev_pass = _DEVTOOLS.run_hermetic_qa(adapter.read("dev-events-valid"), dev_matrix)
+    dev_fail = _DEVTOOLS.run_hermetic_qa(adapter.read("dev-events-defect"), dev_matrix)
+    dev_restore = _DEVTOOLS.run_hermetic_qa(adapter.read("dev-events-valid"), dev_matrix)
 
     sha_a = "sha256:" + "a" * 64
     sha_b = "sha256:" + "b" * 64
@@ -360,6 +378,7 @@ def _surface_controls(adapter: RecordReplayAdapter) -> dict[str, Any]:
     fail_packet = adapter.read("qa-fail")
     fail_packet.update({"worker_identity": "worker-forward-a", "evaluator_identity": "evaluator-forward-b", "candidate_sha_before": sha_a, "candidate_sha_after": sha_a, "worktree_sha_before": sha_a, "worktree_sha_after": sha_a, "issue_contract_id": "forward-eval", "attempt": 1})
     attempt = _EVALUATOR.complete_attempt(attempt, fail_packet)
+    evaluator_fail_result = attempt["result"]
     repaired = _EVALUATOR.repair_attempt(attempt, candidate_sha=sha_b, worktree_sha=sha_b, same_contract=True, prior_result="QA_FAIL")
     pass_packet = adapter.read("qa-pass")
     pass_packet.update({"worker_identity": "worker-forward-a", "evaluator_identity": "evaluator-forward-b", "candidate_sha_before": sha_b, "candidate_sha_after": sha_b, "worktree_sha_before": sha_b, "worktree_sha_after": sha_b, "issue_contract_id": "forward-eval", "attempt": 2})
@@ -379,6 +398,11 @@ def _surface_controls(adapter: RecordReplayAdapter) -> dict[str, Any]:
     packet.update({"worker_identity": "worker-forward-a", "evaluator_identity": "evaluator-forward-b", "candidate_sha_before": third_sha, "candidate_sha_after": third_sha, "worktree_sha_before": third_sha, "worktree_sha_after": third_sha, "issue_contract_id": "forward-eval", "attempt": 3})
     third_state["attempt"] = 3
     third_state = _EVALUATOR.complete_attempt(third_state, packet)
+    fourth_rejected = False
+    try:
+        _EVALUATOR.repair_attempt(third_state, candidate_sha="sha256:" + "d" * 64, worktree_sha="sha256:" + "d" * 64, same_contract=True, prior_result="QA_FAIL")
+    except _EVALUATOR.EvaluatorError:
+        fourth_rejected = True
 
     schema_result = adapter.read("qa-result-qa1")
     schema_fail = _QA_SCHEMA.invalidate_result(schema_result, candidate_manifest_digest="sha256:" + "f" * 64)
@@ -388,12 +412,22 @@ def _surface_controls(adapter: RecordReplayAdapter) -> dict[str, Any]:
     state_pass = copy.deepcopy(state)
     state_fail = _LIFECYCLE.transition_evidence(state_pass, "experience", "stale")
     state_restore = _state(adapter, "state-experience-completed")
+
+    routing_before = _state(adapter, "state-experience-completed")
+    routing_defect = _QA_ROUTING.route_qa_result(routing_before, adapter.read("qa-fail"), diagnosis=adapter.read("diagnosis-device"))
+    routing_recovered = _LIFECYCLE.recover_diagnose(routing_defect["state"])
+    routing_restore = _QA_ROUTING.route_qa_result(routing_recovered, adapter.read("qa-pass"))
     return {
         "browser": {"pass": browser_pass["result"], "defect": stale["result"], "restore": browser_restore["result"]},
         "devtools": {"pass": dev_pass["result"], "defect": dev_fail["result"], "restore": dev_restore["result"]},
-        "evaluator": {"pass": evaluator_restore["result"], "defect": "QA_FAIL", "candidate_changed": evaluator_restore["candidate_sha"] == sha_b, "third_result": third_state["result"], "third_control_outcome": third_state["control_outcome"]},
+        "evaluator": {"pass": evaluator_restore["result"], "defect": evaluator_fail_result, "candidate_changed": evaluator_restore["candidate_sha"] == sha_b, "third_result": third_state["result"], "third_control_outcome": third_state["control_outcome"], "fourth_rejected": fourth_rejected},
         "qa_schema": {"pass": schema_restore["result"], "defect": schema_fail["result"], "reset": schema_fail["result"] == "none"},
         "state": {"pass": state_pass["modules"]["experience"]["evidence_state"], "defect": state_fail["rewind"]["active"], "restore": state_restore["modules"]["experience"]["evidence_state"]},
+        "qa_routing": {"pass": routing_restore["route_kind"], "defect": routing_defect["route_kind"], "restore": routing_restore["state"]["diagnose"]["state"]},
+        "nested_side_effects": {
+            "browser": {"external_network_events": stale["adapter"]["external_network_events"], "mutation_events": stale["adapter"]["mutation_events"]},
+            "devtools": {"external_network_events": dev_fail["adapter"]["external_network_events"], "mutation_events": dev_fail["adapter"]["platform_mutation_events"]},
+        },
     }
 
 
@@ -418,7 +452,7 @@ def _qa(case_id: str, adapter: RecordReplayAdapter) -> dict[str, Any]:
         packet = adapter.read("qa-blocked")
         packet["findings"] = ["automatable-defect"]
         try:
-            _QA_ROUTING.route_qa_result(_state(adapter, "state-experience-completed"), packet, gate_request=adapter.records["human-gate-request"])
+            _QA_ROUTING.route_qa_result(_state(adapter, "state-experience-completed"), packet, gate_request=adapter.read("human-gate-request"))
         except _QA_ROUTING.QARoutingError as exc:
             return {"rejected": exc.code}
         _fail("FORWARD_QA_BLOCKED_DEFECT", "QA_BLOCKED hid an automatable finding", case_id)
@@ -496,41 +530,62 @@ def _qa(case_id: str, adapter: RecordReplayAdapter) -> dict[str, Any]:
     _fail("FORWARD_CASE_UNKNOWN", "QA scenario is not implemented", case_id)
 
 
+def _artifact_tree_clean(root: Path) -> bool:
+    names = [path.name.lower() for path in root.rglob("*")]
+    content = b"".join(path.read_bytes() for path in root.rglob("*") if path.is_file())
+    forbidden_names = ("secret", "openid", "password", "cookie", "private", "credential")
+    forbidden_bytes = (b"openid", b"secret", b"password", b"cookie", b"http://", b"https://", b"cloud://")
+    return not any(any(marker in name for marker in forbidden_names) for name in names) and not any(marker in content.lower() for marker in forbidden_bytes)
+
+
 def _artifact_tree_control() -> bool:
     with tempfile.TemporaryDirectory(prefix="ask-park-forward-") as directory:
         root = Path(directory)
         ephemeral = root / "ephemeral"
         ephemeral.mkdir()
-        sensitive = ephemeral / "private-secret-screenshot.png"
-        sensitive.write_bytes(b"openid=ephemeral-only")
-        sensitive.unlink()
         safe = root / "sanitized-evidence.json"
         safe.write_text('{"ref":"redacted:forward"}', encoding="utf-8")
-        names = [path.name.lower() for path in root.rglob("*")]
-        content = b"".join(path.read_bytes() for path in root.rglob("*") if path.is_file())
-        return not any(any(marker in name for marker in ("secret", "openid", "password", "cookie")) for name in names) and all(marker not in content.lower() for marker in (b"openid", b"secret", b"password"))
+        return _artifact_tree_clean(root)
 
 
 def run_forward_evaluation(manifest: Any, *, records: Mapping[str, Any] | None = None) -> dict[str, Any]:
     scenarios = validate_manifest(manifest)
-    adapter = RecordReplayAdapter(records or load_records())
+    source_records = records or load_records()
+    declared_aliases = {fixture_alias for scenario in scenarios for fixture_alias in scenario["fixtures"]}
+    for required_alias in declared_aliases:
+        if required_alias not in source_records:
+            _fail("FORWARD_FIXTURE_MISSING", "manifest fixture alias is not available to the adapter", required_alias)
+    adapter = RecordReplayAdapter({alias: source_records[alias] for alias in declared_aliases}, allowed_aliases=declared_aliases)
     rows = []
     for scenario in scenarios:
-        for fixture_alias in scenario["fixtures"]:
-            if fixture_alias not in adapter.records:
-                _fail("FORWARD_FIXTURE_MISSING", "manifest fixture alias is not available to the adapter", fixture_alias)
         observations = _architecture(scenario["id"], adapter) if scenario["track"] == "architecture" else _qa(scenario["id"], adapter)
-        rows.append({"id": scenario["id"], "track": scenario["track"], "operation": scenario["operation"], "status": "observed", "observations": observations})
+        if not _safe(observations):
+            _fail("FORWARD_OUTPUT_PRIVATE", "scenario oracle contains a private value", scenario["id"])
+        rows.append({"id": scenario["id"], "track": scenario["track"], "operation": scenario["operation"], "observations": observations})
     adapter.assert_no_external_side_effects()
     controls = _surface_controls(adapter)
+    nested_network = []
+    nested_mutation = []
+    for surface in controls.get("nested_side_effects", {}).values():
+        nested_network.extend(surface.get("external_network_events", []))
+        nested_mutation.extend(surface.get("mutation_events", []))
+    if nested_network or nested_mutation:
+        _fail("FORWARD_NESTED_SIDE_EFFECT", "nested QA adapter emitted an external side effect", "surface_controls")
+    with tempfile.TemporaryDirectory(prefix="ask-park-forward-artifacts-") as directory:
+        artifact_root = Path(directory)
+        for row in rows:
+            (artifact_root / f"{row['id']}.json").write_text(json.dumps(row, ensure_ascii=False, sort_keys=True), encoding="utf-8")
+        artifact_clean = _artifact_tree_clean(artifact_root)
+    if not artifact_clean:
+        _fail("FORWARD_ARTIFACT_PRIVATE", "forward evaluation output tree contains private bytes or names", "artifacts")
     return {
         "scenario_count": len(rows),
         "architecture_count": sum(row["track"] == "architecture" for row in rows),
         "qa_count": sum(row["track"] == "qa" for row in rows),
         "results": rows,
         "surface_controls": controls,
-        "external_network_events": [],
-        "mutation_events": [],
-        "artifact_tree_clean": _artifact_tree_control(),
+        "external_network_events": adapter.external_network_events + nested_network,
+        "mutation_events": adapter.mutation_events + nested_mutation,
+        "artifact_tree_clean": artifact_clean,
         "manifest_digest": "sha256:" + hashlib.sha256(json.dumps(manifest, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest(),
     }
