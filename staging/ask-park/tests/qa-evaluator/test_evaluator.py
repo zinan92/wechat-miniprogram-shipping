@@ -77,6 +77,11 @@ class EvaluatorTests(unittest.TestCase):
         self.assertEqual(state["result"], "QA_FAIL")
         self.assertEqual(state["control_outcome"], "needs-park-decision")
         self.assertCode("QA_THIRD_FAILURE_ESCALATION", self.evaluator.repair_attempt, state, candidate_sha="sha256:" + "e" * 64, worktree_sha="sha256:" + "f" * 64, same_contract=True, prior_result="QA_FAIL")
+        self.assertEqual(state["repair_provenance"]["worktree_sha_before"], "sha256:" + "b" * 64)
+
+    def test_repair_requires_completed_result(self):
+        state = self.evaluator.start_attempt(worker_identity="worker-build-a", evaluator_identity="evaluator-fresh-b", candidate_sha="sha256:" + "a" * 64, worktree_sha="sha256:" + "a" * 64, issue_contract_id="issue-24")
+        self.assertCode("QA_REPAIR_STATE", self.evaluator.repair_attempt, state, candidate_sha="sha256:" + "b" * 64, worktree_sha="sha256:" + "b" * 64, same_contract=True)
 
     def test_pass_or_blocked_or_identity_change_resets_attempt(self):
         state = {"execution_state": "complete", "result": "QA_PASS", "control_outcome": "none", "attempt": 2, "max_attempts": 3}
@@ -102,6 +107,9 @@ class EvaluatorTests(unittest.TestCase):
                 self.evaluator.validate_packet(packet)
         packet = self.fixture("fail-packet.json")
         packet["findings"] = ["next_module=release"]
+        self.assertCode("QA_PACKET_PRIVATE_FIELD", self.evaluator.validate_packet, packet)
+        packet = self.fixture("fail-packet.json")
+        packet["findings"] = [{"route_to": "release"}]
         self.assertCode("QA_PACKET_PRIVATE_FIELD", self.evaluator.validate_packet, packet)
         packet = self.fixture("fail-packet.json")
         packet["exclusions"] = ["cloud://private-target"]

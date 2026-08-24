@@ -13,7 +13,7 @@ SHA_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
 LAYERS = {"plan", "build", "cloudbase", "experience", "device", "release"}
 VERDICTS = {"QA_PASS", "QA_FAIL", "QA_BLOCKED"}
 PACKET_KEYS = {"worker_identity", "evaluator_identity", "fresh_context", "read_only", "candidate_sha_before", "candidate_sha_after", "worktree_sha_before", "worktree_sha_after", "bounded_inputs", "exclusions", "verdict", "findings", "advisory_earliest_layer", "automation_passed", "human_gate_required", "human_gate_ref", "issue_contract_id", "attempt", "limitations"}
-PRIVATE_PARTS = ("secret", "token", "password", "openid", "credential", "private_key", "api_key", "cookie", "next_module", "current_module")
+PRIVATE_PARTS = ("secret", "token", "password", "openid", "credential", "private_key", "api_key", "cookie", "next_module", "current_module", "route_to", "routing")
 PRIVATE_PREFIXES = ("http://", "https://", "file://", "cloud://", "/Users/", "/private/", "~/")
 
 
@@ -85,12 +85,14 @@ def validate_packet(packet: Mapping[str, Any]) -> dict[str, Any]:
         _fail("QA_VERDICT_INVALID", "verdict is outside the evaluator enum", "packet.verdict")
     if packet["advisory_earliest_layer"] is not None and packet["advisory_earliest_layer"] not in LAYERS:
         _fail("QA_LAYER_INVALID", "advisory layer is not sequential", "packet.advisory_earliest_layer")
-    if not isinstance(packet["findings"], list):
+    if not isinstance(packet["findings"], list) or any(not isinstance(item, str) or not item.strip() for item in packet["findings"]):
         _fail("QA_FINDINGS_INVALID", "findings must be a list", "packet.findings")
     if packet["verdict"] == "QA_PASS" and packet["findings"]:
         _fail("QA_PASS_FINDINGS", "QA_PASS cannot carry unresolved findings", "packet.findings")
     if packet["verdict"] == "QA_FAIL" and not packet["findings"]:
         _fail("QA_FAIL_FINDINGS", "QA_FAIL requires observable findings", "packet.findings")
+    if packet["verdict"] == "QA_FAIL" and packet["advisory_earliest_layer"] is None:
+        _fail("QA_FAIL_LAYER", "QA_FAIL requires an advisory earliest layer", "packet.advisory_earliest_layer")
     if not isinstance(packet["automation_passed"], bool):
         _fail("QA_AUTOMATION_FLAG", "automation_passed must be boolean", "packet.automation_passed")
     if not isinstance(packet["human_gate_required"], bool):
@@ -103,7 +105,7 @@ def validate_packet(packet: Mapping[str, Any]) -> dict[str, Any]:
         _fail("QA_BLOCKED_GATE", "QA_BLOCKED requires a human gate", "packet.human_gate_required")
     if packet["verdict"] == "QA_BLOCKED" and not _alias(packet.get("human_gate_ref")):
         _fail("QA_BLOCKED_GATE", "QA_BLOCKED requires a named human gate reference", "packet.human_gate_ref")
-    if not isinstance(packet.get("limitations"), list) or not packet["limitations"]:
+    if not isinstance(packet.get("limitations"), list) or not packet["limitations"] or any(not isinstance(item, str) or not item.strip() for item in packet["limitations"]):
         _fail("QA_LIMITATIONS_REQUIRED", "evaluator packet requires limitations", "packet.limitations")
     return copy.deepcopy(dict(packet))
 
@@ -167,8 +169,12 @@ def repair_attempt(state: Mapping[str, Any], *, candidate_sha: str, worktree_sha
         _fail("QA_WORKTREE_IDENTITY", "worktree SHA must be a full digest", "worktree_sha")
     current = copy.deepcopy(dict(state))
     actual_result = current.get("result", "none")
+    if current.get("execution_state") != "complete":
+        _fail("QA_REPAIR_STATE", "repair requires a completed QA result", "state.execution_state")
     if prior_result is not None and prior_result != actual_result:
         _fail("QA_RESULT_STATE_MISMATCH", "caller result does not match evaluator state", "prior_result")
+    if same_contract and actual_result not in {"QA_FAIL", "QA_PASS", "QA_BLOCKED"}:
+        _fail("QA_REPAIR_RESULT", "repair requires a completed QA result", "state.result")
     if same_contract and candidate_sha == current.get("candidate_sha"):
         _fail("QA_CANDIDATE_NOT_NEW", "same-contract repair requires a new candidate digest", "candidate_sha")
     if not same_contract or actual_result in {"QA_PASS", "QA_BLOCKED"}:
@@ -178,13 +184,19 @@ def repair_attempt(state: Mapping[str, Any], *, candidate_sha: str, worktree_sha
     if attempt > 3:
         _fail("QA_THIRD_FAILURE_ESCALATION", "a fourth blind repair is not allowed", "attempt")
     current.update({"execution_state": "ready", "result": "none", "control_outcome": "none", "attempt": attempt})
+    current["repair_provenance"] = {
+        "candidate_sha_before": current.get("candidate_sha"),
+        "candidate_sha_after": candidate_sha,
+        "worktree_sha_before": current.get("worktree_sha"),
+        "worktree_sha_after": worktree_sha,
+    }
     current["candidate_sha"] = candidate_sha
     current["worktree_sha"] = worktree_sha
     if isinstance(current.get("packet"), dict):
         current["packet"].update({
             "candidate_sha_before": candidate_sha,
             "candidate_sha_after": candidate_sha,
-            "worktree_sha_before": candidate_sha,
+            "worktree_sha_before": worktree_sha,
             "worktree_sha_after": worktree_sha,
             "attempt": attempt,
         })
