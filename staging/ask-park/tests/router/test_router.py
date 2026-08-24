@@ -121,6 +121,29 @@ class RoutingTests(RouterTestCase):
         self.assertEqual(decision.current_module, "release")
         self.assertEqual(decision.reason_code, "formal-release-complete")
 
+        legacy = copy.deepcopy(state)
+        legacy.pop("project_state")
+        legacy["project_terminal_state"] = "released"
+        legacy_decision = self.router.route(legacy, "release")
+        self.assertEqual(legacy_decision.current_module, "release")
+        self.assertEqual(legacy_decision.reason_code, "formal-release-complete")
+
+        target = self.lifecycle_state("experience-completed.json")
+        target["modules"]["device"]["activity_state"] = "completed"
+        target["modules"]["device"]["evidence_state"] = "valid"
+        target["modules"]["device"]["receipt_id"] = "device-r1"
+        target["modules"]["release"] = {
+            "applicability": "not-applicable",
+            "activity_state": "not-applicable",
+            "evidence_state": "not-applicable",
+            "receipt_id": None,
+            "not_applicable_reason": "Target stops before Release.",
+        }
+        target.pop("project_state")
+        target["project_terminal_state"] = "target-achieved"
+        target_decision = self.router.route(target, "continuation")
+        self.assertEqual(target_decision.reason_code, "terminal-project-state")
+
     def test_conflicts_and_authority_are_explicit_control_outcomes(self):
         state = self.state()
         self.assertEqual(

@@ -322,6 +322,9 @@ def route(
 
     if control_outcome is None:
         project_state = next_state.get("project_state")
+        if project_state is None:
+            legacy_terminal = next_state.get("project_terminal_state", "none")
+            project_state = "active" if legacy_terminal == "none" else legacy_terminal
         if project_state == "released":
             selected_module = "release"
             reason = "formal-release-complete"
