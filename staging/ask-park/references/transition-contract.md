@@ -21,16 +21,23 @@ never copied into an error. Representative codes are:
 | `CURRENT_MODULE_REQUIRED` | A module cannot become current before its required predecessors |
 | `COMPLETION_EVIDENCE_REQUIRED` | Completion lacks valid evidence |
 | `ILLEGAL_DIAGNOSE_TRANSITION` | Diagnose state/outcome edge is not legal |
+| `DIAGNOSE_MODULE_MISMATCH` | An active Diagnose overlay does not match `current_module` |
 | `ILLEGAL_PROJECT_TRANSITION` | Project terminal edge is not legal |
+| `PROJECT_TARGET_EVIDENCE_REQUIRED` / `PROJECT_TARGET_SCOPE_REQUIRED` | A target-achieved stop is missing a completed, valid, receipted current target or later modules are not explicitly out of scope |
+| `PROJECT_RELEASE_EVIDENCE_REQUIRED` | Release completion lacks valid Release evidence, a receipt, or a read-back human gate |
 | `RECEIPT_NOT_ISSUABLE` | Receipt is stale/invalid rather than an issuable observation |
 | `PREDECESSOR_RECEIPT_MISSING` / `PREDECESSOR_RECEIPT_INVALID` | Causal predecessor chain is incomplete or unusable |
+| `PREDECESSOR_ORDER_INVALID` / `RECEIPT_ID_MISMATCH` | A predecessor is not an earlier sequential module or an external receipt alias does not match its payload |
 | `RECEIPT_REUSE_INVALIDATED` | A declared causal invalidation trigger changed |
+| `INVALIDATION_REASON_REQUIRED` | A causal invalidation reason is missing or not a safe alias |
+| `HUMAN_GATE_INVALID` | A prepared gate does not satisfy the S01 gate shape or persistence boundary |
 | `HUMAN_AUTHORIZATION_REQUIRED` | An explicit owner decision is missing or technical access was supplied instead |
 | `CONTROL_CLEARING_EVIDENCE_REQUIRED` | The supplied evidence does not directly resolve the control outcome |
 | `SUPERSEDING_CONTRACT_REQUIRED` | A baseline conflict lacks an accepted superseding contract |
 | `CONTRACT_MIGRATION_REQUIRED` | A contract-version change has no explicit migration |
 | `INCOMPATIBLE_CONTRACT` | Migration does not explicitly prove compatibility and verification |
 | `MIGRATION_CAUSAL_IDENTITY_CHANGED` | A claimed compatible migration changed a causal binding |
+| `MIGRATION_TRANSFORM_FAILED` | A migration transform raised an internal exception and was rejected without exposing its details |
 
 ## Module activity and evidence
 
@@ -67,6 +74,17 @@ is an explicit Plan decision and cannot be changed by a later module.
 Failed or externally blocked work remains the one `current_module`.
 Diagnose overlays that module; it is never a seventh sequential current
 module.
+
+When the approved target stops before Release, the final required module is
+completed with valid evidence and a receipt, every later module is explicitly
+`not-applicable`, and the project terminal axis becomes `target-achieved`.
+The transition validates the complete output and removes the legacy
+`project_terminal_state` alias. Release completion similarly synchronizes the
+legacy alias and requires a `read-back` gate. All terminal project states
+(`target-achieved`, `released`, and `abandoned`) freeze subsequent module and
+Diagnose mutations. Release completion additionally requires a non-technical,
+explicit `authority_basis` on that read-back gate; a gate state alone is not
+authorization.
 
 ## Diagnose overlay
 

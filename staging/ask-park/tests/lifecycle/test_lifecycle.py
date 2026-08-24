@@ -1,6 +1,7 @@
 import copy
 import importlib.util
 import json
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -64,6 +65,38 @@ class ModuleTransitionTests(LifecycleTestCase):
             "current",
         )
 
+    def test_terminal_project_state_freezes_module_and_diagnose_axes(self):
+        state = self.fixture("experience-current.json")
+        state["project_state"] = "abandoned"
+        self.assertCode(
+            "ILLEGAL_PROJECT_TRANSITION",
+            self.lifecycle.transition_activity,
+            state,
+            "experience",
+            "failed",
+        )
+        self.assertCode(
+            "ILLEGAL_PROJECT_TRANSITION",
+            self.lifecycle.activate_diagnose,
+            state,
+            "experience",
+            "terminal-diagnosis",
+        )
+
+    def test_diagnose_must_overlay_current_module(self):
+        state = self.fixture("experience-current.json")
+        state["diagnose"] = {
+            "state": "active",
+            "outcome": "none",
+            "interrupted_module": "build",
+            "recovery_goal": "wrong-context",
+        }
+        self.assertCode(
+            "DIAGNOSE_MODULE_MISMATCH",
+            self.lifecycle.recover_diagnose,
+            state,
+        )
+
     def test_evidence_cannot_be_removed_from_a_completed_module(self):
         state = self.fixture("experience-current.json")
         state["modules"]["experience"]["activity_state"] = "completed"
@@ -102,6 +135,7 @@ class ModuleTransitionTests(LifecycleTestCase):
 
     def test_project_release_requires_release_receipt_and_read_back(self):
         state = self.fixture("released-ready.json")
+        state["project_terminal_state"] = "none"
         self.assertCode(
             "PROJECT_RELEASE_EVIDENCE_REQUIRED",
             self.lifecycle.transition_project,
@@ -114,6 +148,20 @@ class ModuleTransitionTests(LifecycleTestCase):
         state = self.lifecycle.transition_activity(state, "release", "completed")
         self.assertEqual(state["project_state"], "released")
         self.assertEqual(state["current_module"], "release")
+        self.assertNotIn("project_terminal_state", state)
+
+        missing_authority = self.fixture("released-ready.json")
+        missing_authority["human_gate"] = self.fixture("human-read-back.json")
+        missing_authority["human_gate"].pop("authority_basis")
+        missing_authority = self.lifecycle.transition_evidence(missing_authority, "release", "valid")
+        missing_authority["modules"]["release"]["receipt_id"] = "release-r1"
+        self.assertCode(
+            "HUMAN_AUTHORIZATION_REQUIRED",
+            self.lifecycle.transition_activity,
+            missing_authority,
+            "release",
+            "completed",
+        )
 
     def test_project_can_stop_at_a_verified_current_target(self):
         state = self.fixture("experience-current.json")
@@ -126,7 +174,8 @@ class ModuleTransitionTests(LifecycleTestCase):
                 "receipt_id": None,
                 "not_applicable_reason": "Target stops at experience acceptance.",
             }
-        state = self.lifecycle.transition_project(state, "target-achieved")
+        state["modules"]["experience"]["receipt_id"] = "experience-r1"
+        state = self.lifecycle.transition_activity(state, "experience", "completed")
         self.assertEqual(state["project_state"], "target-achieved")
         self.assertEqual(state["current_module"], "experience")
 
@@ -160,7 +209,8 @@ class ModuleTransitionTests(LifecycleTestCase):
                 "receipt_id": None,
                 "not_applicable_reason": "Target stops at experience acceptance.",
             }
-        state = self.lifecycle.transition_project(state, "target-achieved")
+        state["modules"]["experience"]["receipt_id"] = "experience-r1"
+        state = self.lifecycle.transition_activity(state, "experience", "completed")
         self.assertEqual(state["project_state"], "target-achieved")
         self.assertNotIn("project_terminal_state", state)
 
@@ -251,6 +301,17 @@ class ReceiptLifecycleTests(LifecycleTestCase):
             self.lifecycle.invalidate_receipts({}, changed_fields=["source.commit_sha"], reason_code="")
         self.assertEqual(raised.exception.code, "INVALIDATION_REASON_REQUIRED")
 
+    def test_invalidation_requires_mapping_key_to_match_receipt_id(self):
+        receipt = self.fixture("valid-build-receipt.json")
+        with self.assertRaises(self.lifecycle.LifecycleError) as raised:
+            self.lifecycle.invalidate_receipts({"wrong-key": receipt}, changed_fields=["source.commit_sha"])
+        self.assertEqual(raised.exception.code, "RECEIPT_ID_MISMATCH")
+
+    def test_invalidation_reason_is_safe(self):
+        with self.assertRaises(self.lifecycle.LifecycleError) as raised:
+            self.lifecycle.invalidate_receipts({}, changed_fields=["source.commit_sha"], reason_code="/private/path")
+        self.assertEqual(raised.exception.code, "INVALIDATION_REASON_REQUIRED")
+
     def test_rewind_locks_downstream_without_routing_authority(self):
         state = self.fixture("experience-completed.json")
         state = self.lifecycle.rewind_state(
@@ -288,6 +349,45 @@ class HumanGateLifecycleTests(LifecycleTestCase):
         self.assertEqual(gate["state"], "read-back")
         self.assertEqual(gate["authorized_at"], "2026-08-24T10:01:00Z")
 
+    def test_prepare_human_gate_validates_embedded_input_and_unknown_fields(self):
+        gate = self.fixture("new-human-gate.json")
+        gate["secret"] = "fixture-value"
+        with self.assertRaises(self.lifecycle.LifecycleError) as raised:
+            self.lifecycle.prepare_human_gate(
+                gate,
+                action_type="upload-experience",
+                action_scope="experience-v1",
+                authorizing_role="owner",
+                requested_at="2026-08-24T10:00:00Z",
+                evidence_ref="redacted:gate",
+            )
+        self.assertEqual(raised.exception.code, "HUMAN_GATE_INVALID")
+
+        for private_scope, private_role in (
+            ("https://private.example/x", "owner"),
+            ("experience-v1", "/Users/wendy/private"),
+        ):
+            with self.assertRaises(self.lifecycle.LifecycleError) as raised:
+                self.lifecycle.prepare_human_gate(
+                    self.fixture("new-human-gate.json"),
+                    action_type="upload-experience",
+                    action_scope=private_scope,
+                    authorizing_role=private_role,
+                    requested_at="2026-08-24T10:00:00Z",
+                    evidence_ref="redacted:gate",
+                )
+            self.assertEqual(raised.exception.code, "HUMAN_GATE_INVALID")
+        with self.assertRaises(self.lifecycle.LifecycleError) as raised:
+            self.lifecycle.prepare_human_gate(
+                None,
+                action_type="upload-experience",
+                action_scope="experience-v1",
+                authorizing_role="owner",
+                requested_at="2026-08-24T10:00:00Z",
+                evidence_ref="redacted:gate",
+            )
+        self.assertEqual(raised.exception.code, "HUMAN_GATE_INVALID")
+
     def test_access_is_not_authorization_and_denied_or_expired_are_terminal(self):
         gate = self.fixture("awaiting-human-gate.json")
         self.assertCode(
@@ -297,12 +397,31 @@ class HumanGateLifecycleTests(LifecycleTestCase):
             authorized_at="2026-08-24T10:01:00Z",
             authority_basis="authenticated CLI access",
         )
+        self.assertCode(
+            "HUMAN_AUTHORIZATION_REQUIRED",
+            self.lifecycle.authorize_human_gate,
+            gate,
+            authorized_at="2026-08-24T10:01:00Z",
+            authority_basis="private-token",
+        )
         denied = self.lifecycle.transition_human_gate(gate, "denied")
         self.assertCode("ILLEGAL_HUMAN_GATE_TRANSITION", self.lifecycle.transition_human_gate, denied, "authorized")
         self.assertCode("ILLEGAL_HUMAN_GATE_TRANSITION", self.lifecycle.transition_human_gate, gate, "expired")
 
 
 class ControlAndMigrationTests(LifecycleTestCase):
+    def test_cli_input_reader_rejects_duplicate_keys_without_path_details(self):
+        with tempfile.TemporaryDirectory() as directory:
+            duplicate = Path(directory) / "private-input.json"
+            duplicate.write_text('{"project_state":"active","project_state":"abandoned"}', encoding="utf-8")
+            with self.assertRaises(ValueError) as raised:
+                self.lifecycle._read_json(duplicate)
+            self.assertEqual(str(raised.exception), "input contains duplicate JSON object key")
+            missing = Path(directory) / "missing-input.json"
+            with self.assertRaises(ValueError) as raised:
+                self.lifecycle._read_json(missing)
+            self.assertEqual(str(raised.exception), "input cannot be read")
+
     def test_control_outcome_clear_requires_matching_evidence_or_contract(self):
         state = self.fixture("control-outcomes.json")
         self.assertCode(
@@ -365,6 +484,61 @@ class ControlAndMigrationTests(LifecycleTestCase):
         )
         self.assertEqual(migrated["contract_version"], "ask-park.receipt/v2")
         self.assertEqual(migrated["status"], "valid")
+
+        def explode(_item):
+            raise RuntimeError("private transformation detail")
+
+        self.assertCode(
+            "MIGRATION_TRANSFORM_FAILED",
+            self.lifecycle.migrate_receipt,
+            receipt,
+            target_contract_version="ask-park.receipt/v2",
+            migration={
+                "compatible": True,
+                "preserves_causal_identity": True,
+                "verified": True,
+                "transform": explode,
+            },
+        )
+
+        def raise_lifecycle_error(_item):
+            raise self.lifecycle.LifecycleError("PRIVATE_CODE", "private transform secret")
+
+        with self.assertRaises(self.lifecycle.LifecycleError) as raised:
+            self.lifecycle.migrate_receipt(
+                receipt,
+                target_contract_version="ask-park.receipt/v2",
+                migration={
+                    "compatible": True,
+                    "preserves_causal_identity": True,
+                    "verified": True,
+                    "transform": raise_lifecycle_error,
+                },
+            )
+        self.assertEqual(raised.exception.code, "MIGRATION_TRANSFORM_FAILED")
+        self.assertNotIn("private transform secret", str(raised.exception))
+
+        self.assertCode(
+            "MIGRATION_CAUSAL_IDENTITY_CHANGED",
+            self.lifecycle.migrate_receipt,
+            receipt,
+            target_contract_version="ask-park.receipt/v2",
+            migration={
+                "compatible": True,
+                "preserves_causal_identity": True,
+                "verified": True,
+                "transform": lambda item: {**item, "receipt_id": "new-receipt-id"},
+            },
+        )
+
+        for malformed_metadata in ([], "migration"):
+            self.assertCode(
+                "INCOMPATIBLE_CONTRACT",
+                self.lifecycle.migrate_receipt,
+                receipt,
+                target_contract_version="ask-park.receipt/v2",
+                migration=malformed_metadata,
+            )
 
         self.assertCode(
             "INCOMPATIBLE_CONTRACT",

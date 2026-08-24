@@ -104,6 +104,9 @@ def _validate_state(state: Any) -> dict[str, Any]:
     if not result.valid:
         first = result.errors[0]
         _error("STATE_INVALID", f"state does not satisfy S01 ({first.code})", first.path)
+    diagnose = result.document.get("diagnose", {})
+    if diagnose.get("state") == "active" and diagnose.get("interrupted_module") != result.document.get("current_module"):
+        _error("DIAGNOSE_MODULE_MISMATCH", "active Diagnose must overlay the current sequential module", "diagnose.interrupted_module")
     return _clone(state)
 
 
@@ -127,6 +130,11 @@ def _validate_receipt(receipt: Any, *, allow_unknown_contract: bool = False) -> 
 def _validate_gate(gate: Any) -> dict[str, Any]:
     if not isinstance(gate, dict):
         _error("HUMAN_GATE_INVALID", "human gate must be an object", "human_gate")
+    boundary_errors = _VALIDATOR._Collector()
+    _VALIDATOR._walk_persistence_boundary(gate, "human_gate", boundary_errors)
+    if boundary_errors.errors:
+        first = boundary_errors.errors[0]
+        _error("HUMAN_GATE_INVALID", f"human gate does not satisfy S01 ({first.code})", first.path)
     if "gate_id" in gate:
         result = _VALIDATOR.validate_human_gate(gate)
         if not result.valid:
@@ -147,6 +155,24 @@ def _post_state(state: dict[str, Any], *, validate: bool = True) -> dict[str, An
     if validate:
         _validate_state(state)
     return state
+
+
+def _ensure_project_progressable(state: Mapping[str, Any]) -> None:
+    project_state = state.get("project_state")
+    terminal_state = state.get("project_terminal_state")
+    terminal = project_state if project_state in ("released", "target-achieved", "abandoned") else terminal_state
+    if terminal in ("released", "target-achieved", "abandoned"):
+        _error("ILLEGAL_PROJECT_TRANSITION", f"terminal project state {terminal} cannot be mutated", "project_state")
+
+
+def _has_explicit_human_authority(value: Any) -> bool:
+    if not isinstance(value, str) or not value.strip():
+        return False
+    return not re.search(
+        r"authenticated|cli|access|permission|login|capability|token|secret|password|api[-_ ]?key",
+        value,
+        re.I,
+    )
 
 
 def _module_record(state: dict[str, Any], module: str) -> dict[str, Any]:
@@ -206,6 +232,7 @@ def transition_evidence(state: Mapping[str, Any], module: str, target: str) -> d
     """Apply one legal evidence-axis transition and return a new state."""
 
     result = _validate_state(state)
+    _ensure_project_progressable(result)
     record = _module_record(result, module)
     if target not in EVIDENCE_STATES:
         _error("ILLEGAL_EVIDENCE_TRANSITION", "evidence state is outside the contract enum", f"modules.{module}.evidence_state")
@@ -264,6 +291,7 @@ def transition_activity(state: Mapping[str, Any], module: str, target: str) -> d
     """
 
     result = _validate_state(state)
+    _ensure_project_progressable(result)
     record = _module_record(result, module)
     if target not in ACTIVITY_STATES:
         _error("ILLEGAL_ACTIVITY_TRANSITION", "activity state is outside the contract enum", f"modules.{module}.activity_state")
@@ -299,11 +327,14 @@ def transition_activity(state: Mapping[str, Any], module: str, target: str) -> d
             gate = result["human_gate"]
             if gate.get("state") != "read-back":
                 _error("PROJECT_RELEASE_EVIDENCE_REQUIRED", "Release completion requires a read-back human gate", "human_gate.state")
+            if not _has_explicit_human_authority(gate.get("authority_basis")):
+                _error("HUMAN_AUTHORIZATION_REQUIRED", "Release completion requires an explicit human authority basis", "human_gate.authority_basis")
     record["activity_state"] = target
     if target == "completed":
         _promote_after_completion(result, module)
         if module == "release":
             result["project_state"] = "released"
+            result.pop("project_terminal_state", None)
     return _post_state(result)
 
 
@@ -313,7 +344,10 @@ def transition_project(state: Mapping[str, Any], target: str) -> dict[str, Any]:
     result = _validate_state(state)
     if target not in PROJECT_STATES:
         _error("ILLEGAL_PROJECT_TRANSITION", "project state is outside the contract enum", "project_state")
-    current = result.get("project_state", "active")
+    current = result.get("project_state")
+    if current is None:
+        legacy_terminal = result.get("project_terminal_state", "none")
+        current = "active" if legacy_terminal == "none" else legacy_terminal
     if current == target:
         return result
     if current in ("released", "abandoned", "target-achieved"):
@@ -326,8 +360,8 @@ def transition_project(state: Mapping[str, Any], target: str) -> dict[str, Any]:
     if target == "target-achieved":
         current_module = result["current_module"]
         current_record = result["modules"][current_module]
-        if current_record["activity_state"] not in ("current", "completed", "not-applicable") or current_record["evidence_state"] not in ("valid", "not-applicable"):
-            _error("PROJECT_TARGET_EVIDENCE_REQUIRED", "target-achieved requires valid evidence for the current target module", "current_module")
+        if current_record["activity_state"] not in ("completed", "not-applicable") or current_record["evidence_state"] not in ("valid", "not-applicable") or (current_record["applicability"] == "required" and not _VALIDATOR._safe_identifier(current_record.get("receipt_id"))):
+            _error("PROJECT_TARGET_EVIDENCE_REQUIRED", "target-achieved requires a completed current target with valid evidence and a receipt", "current_module")
         later_required = [
             module for module in MODULES[MODULE_INDEX[current_module] + 1 :]
             if result["modules"][module]["applicability"] == "required"
@@ -336,9 +370,9 @@ def transition_project(state: Mapping[str, Any], target: str) -> dict[str, Any]:
             _error("PROJECT_TARGET_SCOPE_REQUIRED", "later modules must be explicitly not-applicable before target-achieved", "project_state")
         result["project_state"] = "target-achieved"
         result.pop("project_terminal_state", None)
-        # Keep the last target module current as the explicit stop point. The
+        # Keep the completed target module as the explicit stop point. The
         # activity axis is intentionally not auto-promoted to a successor.
-        return result
+        return _post_state(result)
     if target == "released":
         release = result["modules"]["release"]
         if (
@@ -348,6 +382,8 @@ def transition_project(state: Mapping[str, Any], target: str) -> dict[str, Any]:
             or result["human_gate"].get("state") != "read-back"
         ):
             _error("PROJECT_RELEASE_EVIDENCE_REQUIRED", "released requires completed valid Release evidence and a read-back gate", "project_state")
+        if not _has_explicit_human_authority(result["human_gate"].get("authority_basis")):
+            _error("HUMAN_AUTHORIZATION_REQUIRED", "released requires an explicit human authority basis", "human_gate.authority_basis")
         result["project_state"] = "released"
         result.pop("project_terminal_state", None)
         result["current_module"] = "release"
@@ -357,6 +393,7 @@ def transition_project(state: Mapping[str, Any], target: str) -> dict[str, Any]:
 
 def activate_diagnose(state: Mapping[str, Any], interrupted_module: str, recovery_goal: str) -> dict[str, Any]:
     result = _validate_state(state)
+    _ensure_project_progressable(result)
     _module_record(result, interrupted_module)
     if result["current_module"] != interrupted_module:
         _error("DIAGNOSE_MODULE_MISMATCH", "Diagnose must overlay the current sequential module", "diagnose.interrupted_module")
@@ -375,6 +412,7 @@ def activate_diagnose(state: Mapping[str, Any], interrupted_module: str, recover
 
 def set_diagnose_outcome(state: Mapping[str, Any], outcome: str, recovery_goal: str | None = None) -> dict[str, Any]:
     result = _validate_state(state)
+    _ensure_project_progressable(result)
     diagnose = result["diagnose"]
     if diagnose["state"] != "active":
         _error("DIAGNOSE_NOT_ACTIVE", "Diagnose outcome requires an active Diagnose overlay", "diagnose.state")
@@ -412,6 +450,7 @@ def transition_diagnose(
 
 def recover_diagnose(state: Mapping[str, Any]) -> dict[str, Any]:
     result = _validate_state(state)
+    _ensure_project_progressable(result)
     diagnose = result["diagnose"]
     if diagnose["state"] != "active":
         _error("DIAGNOSE_NOT_ACTIVE", "only an active Diagnose overlay can recover", "diagnose.state")
@@ -455,6 +494,7 @@ def issue_receipt(receipt: Mapping[str, Any], *, predecessors: Mapping[str, Mapp
 
 def _causal_identity(receipt: Mapping[str, Any]) -> dict[str, Any]:
     return {
+        "receipt_id": receipt.get("receipt_id"),
         "schema_version": receipt.get("schema_version"),
         "module": receipt.get("module"),
         "applicability": receipt.get("applicability"),
@@ -520,16 +560,21 @@ def invalidate_receipts(
 ) -> InvalidationResult:
     """Compute the transitive causal closure without selecting a next module."""
 
+    if not isinstance(reason_code, str) or not _VALIDATOR._safe_identifier(reason_code):
+        _error("INVALIDATION_REASON_REQUIRED", "reason_code must be a safe non-empty alias", "reason_code")
     if isinstance(receipts, Mapping):
-        source = {str(key): _validate_receipt(value) for key, value in receipts.items()}
+        source = {}
+        for key, value in receipts.items():
+            validated = _validate_receipt(value)
+            if validated["receipt_id"] != str(key):
+                _error("RECEIPT_ID_MISMATCH", "receipt mapping key does not match receipt_id", "receipts.<key>")
+            source[str(key)] = validated
     else:
         source = {}
         for receipt in receipts:
             validated = _validate_receipt(receipt)
             source[validated["receipt_id"]] = validated
     changed = tuple(str(item) for item in changed_fields)
-    if not reason_code.strip():
-        _error("INVALIDATION_REASON_REQUIRED", "reason_code must be non-empty", "reason_code")
     selected: set[str] = set()
     for receipt_id, receipt in source.items():
         rules = receipt.get("invalidation_rules", {}).get("on", [])
@@ -664,7 +709,9 @@ def prepare_human_gate(
 ) -> dict[str, Any]:
     """Create a prepared gate from explicit action details."""
 
-    prepared = _clone(gate)
+    if not isinstance(gate, Mapping):
+        _error("HUMAN_GATE_INVALID", "human gate must be an object", "human_gate")
+    prepared = _validate_gate(gate)
     if prepared.get("state") != "not-needed":
         _error("ILLEGAL_HUMAN_GATE_TRANSITION", "only a not-needed gate can be prepared", "human_gate.state")
     if not all(isinstance(value, str) and value.strip() for value in (action_type, action_scope, authorizing_role)):
@@ -689,8 +736,7 @@ def prepare_human_gate(
         prepared["gate_id"] = f"gate-{slug}"
     if authority_basis is not None:
         prepared["authority_basis"] = authority_basis
-    if "gate_id" in prepared:
-        _validate_gate(prepared)
+    _validate_gate(prepared)
     return prepared
 
 
@@ -727,7 +773,7 @@ def authorize_human_gate(gate: Mapping[str, Any], *, authorized_at: str, authori
         _error("HUMAN_GATE_TIMESTAMP", "authorized_at must be ISO-8601", "human_gate.authorized_at")
     if not isinstance(authority_basis, str) or not authority_basis.strip():
         _error("HUMAN_AUTHORIZATION_REQUIRED", "explicit authority basis is required", "human_gate.authority_basis")
-    if re.search(r"authenticated|cli|access|permission|login|capability", authority_basis, re.I):
+    if not _has_explicit_human_authority(authority_basis):
         _error("HUMAN_AUTHORIZATION_REQUIRED", "technical access never constitutes authorization", "human_gate.authority_basis")
     current_gate["state"] = "authorized"
     current_gate["authorized_at"] = authorized_at
@@ -783,6 +829,8 @@ def migrate_receipt(
         _error("CONTRACT_MIGRATION_REQUIRED", "contract-version changes require an explicit migration", "receipt.contract_version")
     if callable(migration):
         _error("INCOMPATIBLE_CONTRACT", "migration metadata must explicitly prove compatibility and verification", "migration")
+    if not isinstance(migration, Mapping):
+        _error("INCOMPATIBLE_CONTRACT", "migration metadata must be an object", "migration")
     metadata = migration
     if metadata.get("compatible") is not True or metadata.get("preserves_causal_identity") is not True or metadata.get("verified") is not True:
         _error("INCOMPATIBLE_CONTRACT", "migration must explicitly prove compatibility and verification", "migration")
@@ -791,7 +839,10 @@ def migrate_receipt(
     if transform is not None:
         if not callable(transform):
             _error("INCOMPATIBLE_CONTRACT", "migration transform must be callable", "migration.transform")
-        migrated = transform(_clone(migrated))
+        try:
+            migrated = transform(_clone(migrated))
+        except Exception:
+            _error("MIGRATION_TRANSFORM_FAILED", "migration transform failed", "migration.transform")
         if not isinstance(migrated, dict):
             _error("INCOMPATIBLE_CONTRACT", "migration transform must return a receipt object", "migration.transform")
     if _causal_identity(migrated) != _causal_identity(source):
@@ -821,7 +872,20 @@ clear_control = clear_control_outcome
 
 
 def _read_json(path: Path) -> Any:
-    return json.loads(path.read_text(encoding="utf-8"))
+    def object_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError("input contains duplicate JSON object key")
+            result[key] = value
+        return result
+
+    try:
+        return json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=object_pairs)
+    except OSError as exc:
+        raise ValueError("input cannot be read") from exc
+    except json.JSONDecodeError as exc:
+        raise ValueError("input is not valid JSON") from exc
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -841,7 +905,7 @@ def main(argv: list[str] | None = None) -> int:
             output = transition_evidence(document, args.module, args.target)
         else:
             output = rewind_state(document, earliest_module=args.target, invalidated_receipt_ids=args.receipt_id, reason_code=args.reason_code)
-    except (OSError, json.JSONDecodeError, LifecycleError) as exc:
+    except (ValueError, LifecycleError) as exc:
         payload = {"ok": False, "error": {"code": getattr(exc, "code", "INPUT_INVALID"), "message": str(exc)}}
         print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
         return 2

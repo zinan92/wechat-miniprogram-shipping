@@ -460,6 +460,8 @@ def validate_state(document: Any) -> ValidationResult:
         if current_record.get("applicability") == "required" and current_record.get("activity_state") not in allowed_current_states:
             errors.add("STATE_CURRENT_MODULE", "state.current_module", "current module must remain current, failed, or blocked-external")
         if terminal_state == "target-achieved" and current_record.get("activity_state") == "completed":
+            if current_record.get("evidence_state") != "valid" or not _safe_identifier(current_record.get("receipt_id")):
+                errors.add("STATE_TERMINAL", "state.project_terminal_state", "target-achieved requires completed valid evidence and a receipt ID")
             for later in MODULES[MODULE_INDEX[current_module] + 1 :]:
                 later_record = modules.get(later)
                 if _is_mapping(later_record) and later_record.get("applicability") == "required":
