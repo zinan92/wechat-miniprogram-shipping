@@ -31,13 +31,13 @@
 - S16A/#30 is complete in PR #74 (`19a7bc6`): staging-only scanned-root/symlink/realpath inventory, redacted file refs, JCS-bound canonical package manifest, verified repository/history pre-migration receipt, outside-root staging scope, private/symlink escape rejection, transactional cleanup, managed four-checkpoint rollback rehearsals, and no root/active-skill cutover; 12/12 migration tests plus the full staged/module regression set passed. Staged validation, `py_compile`, diff-check, gitleaks, and both reviews passed.
 - S16B/#31 is complete in PR #76 (`6fc11b4`): canonical Ask Park promoted to root with exactly one SKILL/metadata pair, full closure at root, staging duplicate removed, capability-first README with managed temporary clean-clone installer, closure manifest equality, full router/module/QA canary, seven-path missing-file failures, and no active local path mutation; root final layout and full regression suite passed. Final package, py_compile, diff-check, gitleaks, and both cutover reviews passed.
 - S16C/#32 is complete in PR #78 (`1bfe3a1`): actual two-root inventory, one-canonical/zero-legacy selector read-back, installed manifest/canary equality, atomic legacy backup/canonical move, four rollback rehearsals, automatic post-apply rollback, final reapply, and sanitized operational receipt; 7/7 installed-cutover tests plus the full root regression suite passed. Final layout, `py_compile`, diff-check, gitleaks, and both reviews passed.
-- S16D/#33 is complete in the final publication change: capability-first README, proven clean-clone install/upgrade/rollback boundaries, latest installed canary/read-back, public evidence limits, and final Registry status. No real Mini Program release is implied.
+- S16D/#33 is complete and closed in PR #79 (`e1440a6`): capability-first README, proven clean-clone install/upgrade/rollback boundaries, latest installed canary/read-back, public evidence limits, and final Registry status. No real Mini Program release is implied.
 
 ## 下一步
 
-1. Merge and close [#33 / S16D](https://github.com/zinan92/wechat-miniprogram-shipping/issues/33) after the final public read-back.
+1. [#33 / S16D](https://github.com/zinan92/wechat-miniprogram-shipping/issues/33) is merged and closed; the implementation queue is complete.
 2. The next work is a separately scoped, human-approved, non-production Mini Program real-use trial; do not infer production readiness from this repository.
-3. Preserve hard WIP=1; there is no further implementation issue in this queue.
+3. Preserve hard WIP=1; do not turn the trial into an implicit production-release claim.
 
 ## Evidence
 
@@ -68,6 +68,7 @@
 - [PR #74](https://github.com/zinan92/wechat-miniprogram-shipping/pull/74)
 - [PR #76](https://github.com/zinan92/wechat-miniprogram-shipping/pull/76)
 - [PR #78](https://github.com/zinan92/wechat-miniprogram-shipping/pull/78)
+- [PR #79](https://github.com/zinan92/wechat-miniprogram-shipping/pull/79)
 - [Installed cutover receipt](receipts/installed-cutover.json)
 - [Public read-back receipt](receipts/public-readback.json)
 - [Implementation Dev Queue](https://github.com/zinan92/wechat-miniprogram-shipping/issues?q=is%3Aissue%20state%3Aopen%20label%3Aenhancement)
