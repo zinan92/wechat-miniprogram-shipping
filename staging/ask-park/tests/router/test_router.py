@@ -97,6 +97,11 @@ class RoutingTests(RouterTestCase):
         self.assertTrue(failure.diagnose_requested)
         self.assertIn("references/transition-contract.md", failure.load_contracts)
 
+        reported_failure = self.router.route(self.state(), "failure")
+        self.assertTrue(reported_failure.diagnose_requested)
+        self.assertEqual(reported_failure.reason_code, "failure-diagnose-overlay")
+        self.assertTrue(reported_failure.next_verifiable_step.startswith("Load Diagnose"))
+
         state["modules"]["experience"]["activity_state"] = "blocked-external"
         blocked = self.router.route(state, "continuation")
         self.assertEqual(blocked.selected_module, "experience")

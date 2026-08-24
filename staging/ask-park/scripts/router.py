@@ -330,7 +330,13 @@ def route(
             reason = "terminal-project-state"
         else:
             current_record = _record(next_state, current_module)
-            if current_record["activity_state"] == "blocked-external":
+            if route_intent == "failure":
+                selected_module = current_module
+                reason = "failure-diagnose-overlay"
+                if current_record["activity_state"] == "blocked-external":
+                    control_outcome = "blocked-external"
+                    reason = "current-module-blocked-external"
+            elif current_record["activity_state"] == "blocked-external":
                 selected_module = current_module
                 control_outcome = "blocked-external"
                 reason = "current-module-blocked-external"
