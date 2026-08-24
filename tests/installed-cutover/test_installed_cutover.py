@@ -3,6 +3,7 @@ import json
 import shutil
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 
@@ -61,11 +62,14 @@ class InstalledCutoverTests(unittest.TestCase):
         inventory = {"kind": "skill-inventory", "roots": []}
         selector = {"ask_park_enabled_count": 1, "legacy_enabled_count": 0, "one_canonical": True}
         canary = {"router_loaded": True, "qa_paths_loaded": True, "module_contracts": 7, "manifest_digest": "sha256:" + "a" * 64}
-        rollbacks = [{"legacy_restored": True, "canonical_removed": True} for _ in self.cutover.MIGRATION_MODULE.CHECKPOINTS]
+        rollbacks = [{"checkpoint": checkpoint, "legacy_restored": True, "canonical_removed": True, "partial_removed": True} for checkpoint in self.cutover.MIGRATION_MODULE.CHECKPOINTS]
         receipt = self.cutover.operational_receipt(inventory=inventory, selector=selector, canary=canary, backup_ref="redacted:legacy-backup", rollback_results=rollbacks)
         self.assertEqual(receipt["repository_identity"], "zinan92/wechat-miniprogram-shipping")
         self.assertTrue(receipt["receipt_digest"].startswith("sha256:"))
         self.assertNotIn(str(ROOT), json.dumps(receipt))
+        with self.assertRaises(self.cutover.CutoverError) as raised:
+            self.cutover.operational_receipt(inventory=inventory, selector=selector, canary=canary, backup_ref="redacted:legacy-backup", rollback_results=[])
+        self.assertEqual(raised.exception.code, "CUTOVER_ROLLBACK_RECEIPT")
         with self.assertRaises(self.cutover.CutoverError) as raised:
             self.cutover.operational_receipt(inventory=inventory, selector=selector, canary={"manifest_digest": "sha256:" + "a" * 64, "private_url": "https://private"}, backup_ref="/private/backup", rollback_results=rollbacks)
         self.assertEqual(raised.exception.code, "CUTOVER_RECEIPT_REF")
@@ -92,6 +96,41 @@ class InstalledCutoverTests(unittest.TestCase):
             self.assertTrue(result["legacy_backup_preserved"])
             self.assertFalse((base / "ask-park-migration-test").exists())
             self.assertTrue((base / "receipts" / "receipt.json").is_file())
+
+    def test_wrong_legacy_target_is_rejected_before_mutation(self):
+        with tempfile.TemporaryDirectory(prefix="installed-wrong-target-") as directory:
+            base = Path(directory)
+            skills = base / "skills"
+            skills.mkdir()
+            decoy = skills / "decoy"
+            self.package(decoy, "wechat-miniprogram-shipping")
+            with self.assertRaises(self.cutover.CutoverError) as raised:
+                self.cutover.run_local_cutover(repository_root=ROOT, scanned_roots=[("synthetic-skills", skills)], legacy_root=decoy, canonical_root=skills / "ask-park", migration_root=base / "ask-park-migration-test", backup_root=base / "legacy-backup", receipt_path=base / "receipts" / "receipt.json")
+            self.assertEqual(raised.exception.code, "CUTOVER_TARGET_IDENTITY")
+            self.assertTrue(decoy.is_dir())
+            self.assertFalse((skills / "ask-park").exists())
+
+    def test_post_apply_failure_rolls_back_automatically(self):
+        with tempfile.TemporaryDirectory(prefix="installed-failure-") as directory:
+            base = Path(directory)
+            skills = base / "skills"
+            skills.mkdir()
+            legacy = skills / "wechat-miniprogram-shipping"
+            self.package(legacy, "wechat-miniprogram-shipping")
+            original = self.cutover.installed_canary
+            calls = {"count": 0}
+            def fail_after_apply(*args, **kwargs):
+                calls["count"] += 1
+                if calls["count"] == 2:
+                    raise self.cutover.CutoverError("TEST_POST_APPLY", "injected post-apply failure")
+                return original(*args, **kwargs)
+            with patch.object(self.cutover, "installed_canary", side_effect=fail_after_apply):
+                with self.assertRaises(self.cutover.CutoverError) as raised:
+                    self.cutover.run_local_cutover(repository_root=ROOT, scanned_roots=[("synthetic-skills", skills)], legacy_root=legacy, canonical_root=skills / "ask-park", migration_root=base / "ask-park-migration-test", backup_root=base / "legacy-backup", receipt_path=base / "receipts" / "receipt.json")
+            self.assertEqual(raised.exception.code, "TEST_POST_APPLY")
+            self.assertTrue(legacy.is_dir())
+            self.assertFalse((skills / "ask-park").exists())
+            self.assertFalse((base / "legacy-backup").exists())
 
     def test_docs_define_installed_canary_selector_and_rollback(self):
         text = (ROOT / "quality" / "installed-cutover.md").read_text(encoding="utf-8")

@@ -131,7 +131,7 @@ def operational_receipt(*, inventory: Mapping[str, Any], selector: Mapping[str, 
         _fail("CUTOVER_RECEIPT_PRIVATE", "operational receipt contains private data", "receipt")
     if not isinstance(canary, Mapping) or not isinstance(canary.get("manifest_digest"), str) or not SHA_RE.fullmatch(canary["manifest_digest"]):
         _fail("CUTOVER_CANARY_DIGEST", "canary must carry a full manifest digest", "canary")
-    if not isinstance(rollback_results, list) or any(not isinstance(item, Mapping) or not all(isinstance(item.get(key), bool) for key in ("legacy_restored", "canonical_removed")) for item in rollback_results):
+    if not isinstance(rollback_results, list) or {item.get("checkpoint") for item in rollback_results if isinstance(item, Mapping)} != set(MIGRATION_MODULE.CHECKPOINTS) or any(not isinstance(item, Mapping) or not all(isinstance(item.get(key), bool) and item.get(key) is True for key in ("legacy_restored", "canonical_removed", "partial_removed")) for item in rollback_results):
         _fail("CUTOVER_ROLLBACK_RECEIPT", "rollback receipt rows are malformed", "rollback_results")
     result = {"schema_version": 1, "kind": "ask-park-installed-cutover", "repository_identity": "zinan92/wechat-miniprogram-shipping", "inventory": copy.deepcopy(dict(inventory)), "inventory_digest": MIGRATION_MODULE._hash_json(inventory), "selector": {"ask_park_enabled_count": selector["ask_park_enabled_count"], "legacy_enabled_count": selector["legacy_enabled_count"], "one_canonical": selector["one_canonical"]}, "canary": copy.deepcopy(dict(canary)), "backup_ref": backup_ref, "rollback_results": copy.deepcopy(rollback_results), "evidence_mode": "sanitized-persisted", "limitations": ["Installed selector state is local to the scanned roots read during this operation."]}
     if not selector["one_canonical"]:
@@ -154,6 +154,8 @@ def run_local_cutover(*, repository_root: Path, scanned_roots: list[tuple[str, P
     root_set = {path.resolve() for path in roots}
     if legacy_root.resolve().parent not in root_set or canonical_root.resolve().parent not in root_set or legacy_root.is_symlink() or canonical_root.is_symlink():
         _fail("CUTOVER_TARGET_SCOPE", "legacy and canonical targets must be direct children of a scanned root", "targets")
+    if legacy_root.name != "wechat-miniprogram-shipping" or canonical_root.name != "ask-park" or not (legacy_root / "SKILL.md").is_file() or "name: wechat-miniprogram-shipping" not in (legacy_root / "SKILL.md").read_text(encoding="utf-8"):
+        _fail("CUTOVER_TARGET_IDENTITY", "legacy/canonical target names and identities do not match the cutover contract", "targets")
     if not _outside(migration_root, roots) or not _outside(backup_root, roots) or (not receipt_path.resolve().is_relative_to(repository_root.resolve()) and receipt_path.parent.name != "receipts"):
         _fail("CUTOVER_SCOPE", "migration and backup roots must be outside scanned roots", "scope")
     if migration_root.exists() or not migration_root.name.startswith("ask-park-migration-"):
@@ -163,11 +165,14 @@ def run_local_cutover(*, repository_root: Path, scanned_roots: list[tuple[str, P
     if before_selector["legacy_enabled_count"] != 1 or before_selector["ask_park_enabled_count"] != 0:
         _fail("CUTOVER_PRE_SELECTOR", "cutover requires exactly one legacy entry and no canonical duplicate", "selector")
     migration_root.mkdir(parents=True, exist_ok=False)
+    cutover_applied = False
+    completed = False
     try:
         first_home = migration_root / "clean-clone-home-actual"
         staged = CLEAN_MODULE.install_isolated(repository_root, first_home)
         staged_canary = installed_canary(staged["destination"], repository_root)
         apply_cutover(legacy_root=legacy_root, canonical_root=canonical_root, staged_root=staged["destination"], backup_root=backup_root)
+        cutover_applied = True
         selector = selector_readback(roots)
         installed = installed_canary(canonical_root, repository_root)
         rollback_results = []
@@ -176,16 +181,21 @@ def run_local_cutover(*, repository_root: Path, scanned_roots: list[tuple[str, P
             rehearsal = MIGRATION_MODULE.rollback_checkpoint(workspace, checkpoint)
             rollback_results.append({"checkpoint": checkpoint, "legacy_restored": rehearsal["legacy_preserved"], "canonical_removed": rehearsal["canonical_removed"], "partial_removed": rehearsal["partial_removed"]})
         rollback_cutover(legacy_root=legacy_root, canonical_root=canonical_root, backup_root=backup_root)
+        cutover_applied = False
         second_home = migration_root / "clean-clone-home-final"
         staged_again = CLEAN_MODULE.install_isolated(repository_root, second_home)
         apply_cutover(legacy_root=legacy_root, canonical_root=canonical_root, staged_root=staged_again["destination"], backup_root=backup_root)
+        cutover_applied = True
         final_selector = selector_readback(roots)
         final_canary = installed_canary(canonical_root, repository_root)
         receipt = operational_receipt(inventory=inventory, selector=final_selector, canary=final_canary, backup_ref="redacted:legacy-backup", rollback_results=rollback_results)
         receipt_path.parent.mkdir(parents=True, exist_ok=True)
         receipt_path.write_text(json.dumps(receipt, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
+        completed = True
         return {"pre_cutover_canary": staged_canary, "first_installed_canary": installed, "final_selector": final_selector, "final_canary": final_canary, "receipt": receipt, "legacy_backup_preserved": backup_root.is_dir()}
     finally:
+        if cutover_applied and not completed and canonical_root.is_dir() and backup_root.is_dir() and not legacy_root.exists():
+            rollback_cutover(legacy_root=legacy_root, canonical_root=canonical_root, backup_root=backup_root)
         if migration_root.exists():
             shutil.rmtree(migration_root)
 
