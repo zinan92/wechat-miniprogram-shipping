@@ -1,0 +1,16 @@
+{
+  "classification": [
+    {"input": "从零新建一个小程序", "intent": "new"},
+    {"input": "接手已有项目", "intent": "takeover"},
+    {"input": "这里出现了报错需要修复", "intent": "failure"},
+    {"input": "继续上次的工作", "intent": "continuation"},
+    {"input": "准备发布上线", "intent": "release"}
+  ],
+  "map_order": ["plan", "build", "cloudbase", "experience", "device", "release", "diagnose"],
+  "operator_sections": [
+    "## 1. Conclusion",
+    "## 2. Current module and evidence",
+    "## 3. Decision or action needed from Park",
+    "## 4. Next verifiable step"
+  ]
+}
