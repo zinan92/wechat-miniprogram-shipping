@@ -1,0 +1,9 @@
+{
+  "incident_id": "incident-device-1",
+  "confirmed": false,
+  "interrupted_module": "device",
+  "recovery_goal": "recheck the named device evidence after the observed defect",
+  "earliest_module": null,
+  "changed_fields": [],
+  "reason_code": null
+}

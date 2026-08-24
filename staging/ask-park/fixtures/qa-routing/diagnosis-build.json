@@ -1,0 +1,9 @@
+{
+  "incident_id": "incident-build-1",
+  "confirmed": true,
+  "interrupted_module": "device",
+  "recovery_goal": "rebuild the candidate and rerun the interrupted device acceptance",
+  "earliest_module": "build",
+  "changed_fields": ["source.commit_sha"],
+  "reason_code": "qa-source-defect"
+}
