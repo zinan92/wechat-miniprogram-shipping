@@ -32,6 +32,7 @@
 - S16B/#31 is complete in PR #76 (`6fc11b4`): canonical Ask Park promoted to root with exactly one SKILL/metadata pair, full closure at root, staging duplicate removed, capability-first README with managed temporary clean-clone installer, closure manifest equality, full router/module/QA canary, seven-path missing-file failures, and no active local path mutation; root final layout and full regression suite passed. Final package, py_compile, diff-check, gitleaks, and both cutover reviews passed.
 - S16C/#32 is complete in PR #78 (`1bfe3a1`): actual two-root inventory, one-canonical/zero-legacy selector read-back, installed manifest/canary equality, atomic legacy backup/canonical move, four rollback rehearsals, automatic post-apply rollback, final reapply, and sanitized operational receipt; 7/7 installed-cutover tests plus the full root regression suite passed. Final layout, `py_compile`, diff-check, gitleaks, and both reviews passed.
 - S16D/#33 is complete and closed in PR #79 (`e1440a6`): capability-first README, proven clean-clone install/upgrade/rollback boundaries, latest installed canary/read-back, public evidence limits, and final Registry status. No real Mini Program release is implied.
+- README refresh/#81 is complete and closed in PR #82 (`864af80`): capability-first contract, real CLI/read-back examples, architecture, quick start, use cases, evidence boundaries, QA flow, and AI-agent contract. Runtime, receipts, and active-skill paths were unchanged.
 
 ## 下一步
 
@@ -69,6 +70,7 @@
 - [PR #76](https://github.com/zinan92/wechat-miniprogram-shipping/pull/76)
 - [PR #78](https://github.com/zinan92/wechat-miniprogram-shipping/pull/78)
 - [PR #79](https://github.com/zinan92/wechat-miniprogram-shipping/pull/79)
+- [PR #82](https://github.com/zinan92/wechat-miniprogram-shipping/pull/82)
 - [Installed cutover receipt](receipts/installed-cutover.json)
 - [Public read-back receipt](receipts/public-readback.json)
 - [Implementation Dev Queue](https://github.com/zinan92/wechat-miniprogram-shipping/issues?q=is%3Aissue%20state%3Aopen%20label%3Aenhancement)
