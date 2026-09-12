@@ -14,8 +14,9 @@
     "legacy_identity": "deprecated-disabled",
     "selector_ask_park_enabled_count": 1,
     "selector_legacy_enabled_count": 0,
-    "installed_manifest_digest": "sha256:350b1feb1be9013489224ce3184b0d472f1154eec1bc20c2aa9160cc611a1808",
-    "installed_cutover_receipt_digest": "sha256:56e69507187cabfa424c3290a12fc41e787fba1ce2461dc7dfda79930f56c2dd"
+    "installed_manifest_digest": "sha256:37b4a69a9790cdc08a6aac0c3a1c678ce99e65e62b74a3df8bf632c0554fc35e",
+    "installed_cutover_receipt_digest": "sha256:56e69507187cabfa424c3290a12fc41e787fba1ce2461dc7dfda79930f56c2dd",
+    "latest_update_receipt_digest": "sha256:f2e3c0eb31440d01e0d430c33e62ea28c9e8f2b921f61d21aee411445d97fbfc"
   },
   "verified": {
     "clean_clone": "pass",
@@ -25,10 +26,11 @@
     "missing_file_failure": "pass",
     "full_regression": "pass",
     "gitleaks": "pass",
-    "diff_check": "pass"
+    "diff_check": "pass",
+    "html_content_knowhow": "pass"
   },
   "limitations": [
     "This is a skill/install read-back, not a claim that any Mini Program, CloudBase environment, payment, review, or production release is complete."
   ],
-  "next_real_use_trial": "A separately scoped, human-approved non-production Mini Program task."
+  "next_real_use_trial": "Complete physical-device acceptance of the exact native-HTML experience version, then feed only observed new rules back into the skill."
 }
