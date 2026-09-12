@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "kind": "ask-park-knowledge-update",
+  "repository_identity": "zinan92/wechat-miniprogram-shipping",
+  "source_ref": "redacted:monitored-mini-program-task",
+  "change_ref": "issue-84-pr-85",
+  "knowledge": {
+    "reference": "references/html-content-delivery.md",
+    "branches": [
+      "native-rich-text",
+      "selective-chart-rasterization",
+      "webview-domain-navigation",
+      "cloudbase-reader-artifact",
+      "experience-version-readback",
+      "render-dependent-read-state"
+    ],
+    "project_specific_values_persisted": false
+  },
+  "installed": {
+    "canonical_identity": "ask-park",
+    "legacy_enabled_count": 0,
+    "old_manifest_digest": "sha256:350b1feb1be9013489224ce3184b0d472f1154eec1bc20c2aa9160cc611a1808",
+    "installed_manifest_digest": "sha256:37b4a69a9790cdc08a6aac0c3a1c678ce99e65e62b74a3df8bf632c0554fc35e",
+    "backup_ref": "redacted:ask-park-pre-html-knowhow",
+    "backup_preserved": true,
+    "html_knowhow_present": true
+  },
+  "canary": {
+    "router_loaded": true,
+    "qa_paths_loaded": true,
+    "module_contracts": 7
+  },
+  "verification": {
+    "skill_quick_validate": "pass",
+    "package_layout": "pass",
+    "full_regression": "pass",
+    "clean_clone": "pass",
+    "missing_file_failure": "pass",
+    "gitleaks": "pass",
+    "diff_check": "pass"
+  },
+  "receipt_digest": "sha256:f2e3c0eb31440d01e0d430c33e62ea28c9e8f2b921f61d21aee411445d97fbfc",
+  "limitations": [
+    "This receipt verifies the Ask Park knowledge update and local installed canary, not any Mini Program device, review, payment, or production-release state."
+  ]
+}

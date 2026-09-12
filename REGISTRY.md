@@ -4,8 +4,8 @@
 
 - Public repository: `zinan92/wechat-miniprogram-shipping`.
 - Implemented: canonical root skill identity is `$ask-park`, with seven anchors, independent QA, migration, and cutover contracts.
-- Installed: S16C/S16D read back one enabled `$ask-park` and zero enabled `$wechat-miniprogram-shipping`; the legacy directory remains only as recoverable backups outside scanned roots.
-- Verified: root package, clean clone, installed router/module/QA canary, selector, rollback rehearsal, latest closure digest, and sanitized receipts all passed. This is skill/install verification, not a Mini Program production-release claim.
+- Installed: the current `$ask-park` includes the HTML content-delivery reference; repo and installed closure both read back `sha256:37b4a69a9790cdc08a6aac0c3a1c678ce99e65e62b74a3df8bf632c0554fc35e`. The old package remains as a recoverable backup outside scanned roots and `$wechat-miniprogram-shipping` remains disabled.
+- Verified: root package, clean clone, installed router/module/QA canary, selector, rollback backup, latest closure digest, full regression, and sanitized receipts all passed. This is skill/install verification, not a Mini Program production-release claim.
 - Ask Park single-entry, seven-module architecture is approved and merged in PR #5.
 - Independent Ask Park QA Gate design is approved by Park and merged in PR #7. Its three-round independent review findings were addressed; the final two schema corrections were mechanically validated after the review ceiling and remain visible in the PR record.
 - The L-level implementation plan is approved by architecture, QA/test, and packaging reviewers and merged in PR #11.
@@ -33,12 +33,13 @@
 - S16C/#32 is complete in PR #78 (`1bfe3a1`): actual two-root inventory, one-canonical/zero-legacy selector read-back, installed manifest/canary equality, atomic legacy backup/canonical move, four rollback rehearsals, automatic post-apply rollback, final reapply, and sanitized operational receipt; 7/7 installed-cutover tests plus the full root regression suite passed. Final layout, `py_compile`, diff-check, gitleaks, and both reviews passed.
 - S16D/#33 is complete and closed in PR #79 (`e1440a6`): capability-first README, proven clean-clone install/upgrade/rollback boundaries, latest installed canary/read-back, public evidence limits, and final Registry status. No real Mini Program release is implied.
 - README refresh/#81 is complete and closed in PR #82 (`864af80`): capability-first contract, real CLI/read-back examples, architecture, quick start, use cases, evidence boundaries, QA flow, and AI-agent contract. Runtime, receipts, and active-skill paths were unchanged.
+- HTML content know-how/#84 is complete and closed in PR #85 (`21ef5ed`): one conditional reference now covers native `rich-text`, selective chart rasterization, WebView/domain navigation, CloudBase reader sentinels, exact experience-version evidence, and render-dependent read state. Project-specific identifiers were excluded; the local installed skill was updated with a recoverable backup.
 
 ## 下一步
 
-1. [#33 / S16D](https://github.com/zinan92/wechat-miniprogram-shipping/issues/33) is merged and closed; the implementation queue is complete.
-2. The next work is a separately scoped, human-approved, non-production Mini Program real-use trial; do not infer production readiness from this repository.
-3. Preserve hard WIP=1; do not turn the trial into an implicit production-release claim.
+1. Use the new HTML branch reference on the pending physical-device acceptance of the exact experience version.
+2. Feed back only newly observed cross-project rules; simulator or CloudBase evidence remains separate from device acceptance.
+3. Keep the next change scoped to an observed gap rather than reopening the completed architecture.
 
 ## Evidence
 
@@ -71,6 +72,8 @@
 - [PR #78](https://github.com/zinan92/wechat-miniprogram-shipping/pull/78)
 - [PR #79](https://github.com/zinan92/wechat-miniprogram-shipping/pull/79)
 - [PR #82](https://github.com/zinan92/wechat-miniprogram-shipping/pull/82)
+- [PR #85](https://github.com/zinan92/wechat-miniprogram-shipping/pull/85)
 - [Installed cutover receipt](receipts/installed-cutover.json)
+- [HTML content know-how update receipt](receipts/html-content-knowhow-20260912.json)
 - [Public read-back receipt](receipts/public-readback.json)
 - [Implementation Dev Queue](https://github.com/zinan92/wechat-miniprogram-shipping/issues?q=is%3Aissue%20state%3Aopen%20label%3Aenhancement)
