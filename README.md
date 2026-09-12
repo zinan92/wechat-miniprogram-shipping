@@ -338,6 +338,7 @@ gitleaks detect --no-banner --source . --redact
 - [Evidence contract](./references/evidence-contract.md)
 - [Human gates contract](./references/human-gates-contract.md)
 - [Transition contract](./references/transition-contract.md)
+- [HTML content delivery know-how](./references/html-content-delivery.md)
 
 ## 当前状态
 
