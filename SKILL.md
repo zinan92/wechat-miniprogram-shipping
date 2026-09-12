@@ -54,6 +54,13 @@ router composes these shared contracts:
 - [references/human-gates-contract.md](references/human-gates-contract.md)
 - [references/transition-contract.md](references/transition-contract.md)
 
+When the task involves imported HTML, native `rich-text`, `web-view`,
+JavaScript/canvas charts, business-domain verification, signed reader
+artifacts, or render-dependent read state, also read
+[references/html-content-delivery.md](references/html-content-delivery.md).
+It contains the renderer decision, content-chain evidence ladder, and the
+CloudBase/DevTools/device failure sentinels for that branch.
+
 The executable seam is [scripts/router.py](scripts/router.py). It is pure and
 provider-free: it validates state, optionally asks S01B to compute causal
 invalidation/rewind, and returns a new decision. It does not write files,
