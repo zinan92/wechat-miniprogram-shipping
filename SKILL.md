@@ -61,6 +61,14 @@ artifacts, or render-dependent read state, also read
 It contains the renderer decision, content-chain evidence ladder, and the
 CloudBase/DevTools/device failure sentinels for that branch.
 
+When the task sells virtual goods (membership, subscription, unlocked content,
+coins) or involves `wx.requestVirtualPayment`, virtual-payment items or
+coins, sandbox/production switching, Apple IAP on iOS, order reconciliation,
+or a review rejection about payment or empty member pages, also read
+[references/virtual-payment-delivery.md](references/virtual-payment-delivery.md).
+It contains the terminal routing, merchant enablement gates, errMsg-first
+diagnosis, environment-switch and review sentinels for that branch.
+
 The executable seam is [scripts/router.py](scripts/router.py). It is pure and
 provider-free: it validates state, optionally asks S01B to compute causal
 invalidation/rewind, and returns a new decision. It does not write files,

@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "kind": "ask-park-knowledge-update",
+  "repository_identity": "zinan92/wechat-miniprogram-shipping",
+  "source_ref": "redacted:monitored-mini-program-task",
+  "change_ref": "issue-87",
+  "knowledge": {
+    "reference": "references/virtual-payment-delivery.md",
+    "reference_sha256": "sha256:2d7d24a417c8f2e883e23d1ffe395e49a4742d91bd43f9aede193dd0a696a310",
+    "branches": [
+      "virtual-goods-channel",
+      "terminal-routing-ios-no-sandbox",
+      "merchant-enablement-gates",
+      "errmsg-first-diagnosis",
+      "env-switch-order-invalidation",
+      "review-state-as-configuration",
+      "deploy-packaging-sentinels"
+    ],
+    "project_specific_values_persisted": false
+  },
+  "installed": {
+    "canonical_identity": "ask-park",
+    "installed_skill_sha256": "sha256:37f0bc0d25dbdceae5821d4d4c43c47062a27c8a6f57689889da6e6bf025e4da",
+    "virtual_payment_knowhow_present": true,
+    "installed_layout_validate": "pass"
+  },
+  "verification": {
+    "package_layout": "pass",
+    "full_regression": "pass",
+    "py_compile": "pass",
+    "gitleaks": "pass",
+    "diff_check": "pass",
+    "project_value_grep": "pass"
+  },
+  "observed": [
+    "iOS sandbox purchase fails with -15001",
+    "iOS production purchase fails with -15001 and errMsg 当前商户尚未开启 iOS 支付 until Apple IAP is enabled",
+    "restored sandbox order fails after switching to production until cancelled",
+    "function packaged without dependencies fails every invoke"
+  ],
+  "limitations": [
+    "A successful iOS purchase after enabling Apple IAP was not yet observed when this receipt was written.",
+    "Android sandbox purchase, server fulfilment on a real paid order, and review outcome were not observed.",
+    "This receipt verifies the Ask Park knowledge update and local installed files, not any Mini Program device, payment, review, or production-release state."
+  ]
+}
